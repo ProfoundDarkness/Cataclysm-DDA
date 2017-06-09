@@ -9,6 +9,7 @@
 #include "translations.h"
 #include "uistate.h"
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "messages.h"
 #include "player_activity.h"
 #include "string_formatter.h"
@@ -318,6 +319,7 @@ void advanced_inventory::print_items( advanced_inventory_pane &pane, bool active
         nc_color print_color;
 
         if( selected ) {
+            // !! This is the way to get the color of the item (and apparently highlight)
             thiscolor = ( inCategoryMode &&
                           pane.sortby == SORTBY_CATEGORY ) ? c_white_red : hilite( thiscolor );
             thiscolordark = hilite( thiscolordark );
@@ -329,9 +331,11 @@ void advanced_inventory::print_items( advanced_inventory_pane &pane, bool active
         }
 
         std::string item_name = it.display_name();
+        //std::string item_name = string_format( "%c %s", sitem.desirability, it.display_name().c_str());
         if( get_option<bool>( "ITEM_SYMBOLS" ) ) {
             item_name = string_format( "%s %s", it.symbol().c_str(), item_name.c_str() );
         }
+        item_name = string_format( "%c %s", sitem.desirability, item_name.c_str());
 
         //print item name
         trim_and_print( window, 6 + x, compact ? 1 : 4, max_name_length, thiscolor, item_name );
@@ -758,6 +762,7 @@ advanced_inv_listitem::advanced_inv_listitem( item *an_item, int index, int coun
     , name( an_item->tname( count ) )
     , name_without_prefix( an_item->tname( 1, false ) )
     , autopickup( get_auto_pickup().has_rule( an_item->tname( 1, false ) ) )
+    , desirability( get_item_desirability().get( an_item->tname( 1, false ) ) )
     , stacks( count )
     , volume( an_item->volume() * stacks )
     , weight( an_item->weight() * stacks )
@@ -777,6 +782,7 @@ advanced_inv_listitem::advanced_inv_listitem(const std::list<item*> &list, int i
     name(list.front()->tname(list.size())),
     name_without_prefix(list.front()->tname(1, false)),
     autopickup(get_auto_pickup().has_rule(list.front()->tname(1, false))),
+    desirability(get_item_desirability().get(list.front()->tname(1, false))),
     stacks(list.size()),
     volume(list.front()->volume() * stacks),
     weight(list.front()->weight() * stacks),
@@ -793,6 +799,7 @@ advanced_inv_listitem::advanced_inv_listitem()
     , name()
     , name_without_prefix()
     , autopickup()
+    , desirability()
     , stacks()
     , volume()
     , weight()
@@ -807,6 +814,7 @@ advanced_inv_listitem::advanced_inv_listitem( const item_category *category )
     , name( category->name() )
     , name_without_prefix()
     , autopickup()
+    , desirability()
     , stacks()
     , volume()
     , weight()
@@ -1363,7 +1371,7 @@ bool advanced_inventory::show_sort_menu( advanced_inventory_pane &pane )
     return true;
 }
 
-void advanced_inventory::display()
+void advanced_inventory::display() // !! This is where new keybindings are registered/read.  This also handles the reaction to the keybinding.
 {
     init();
 
@@ -1404,6 +1412,9 @@ void advanced_inventory::display()
     ctxt.register_action( "ITEMS_AROUND" );
     ctxt.register_action( "ITEMS_DRAGGED_CONTAINER" );
     ctxt.register_action( "ITEMS_CONTAINER" );
+    ctxt.register_action( "ITEM_PRIORITY_CLEAR" );
+    ctxt.register_action( "ITEM_PRIORITY_INCREASE" );
+    ctxt.register_action( "ITEM_PRIORITY_DECREASE" );
 
     ctxt.register_action( "ITEMS_DEFAULT" );
     ctxt.register_action( "SAVE_DEFAULT" );
@@ -1791,6 +1802,25 @@ void advanced_inventory::display()
                 popup( _("No vehicle there!") );
                 redraw = true;
             }
+        } else if( action == "ITEM_PRIORITY_CLEAR" ) { //additional item desire code.
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().remove(sitem->items.front()->tname(1, false));
+            //sitem->name_without_prefix;
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_INCREASE") {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().increment(sitem->items.front()->tname(1, false));
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_DECREASE") {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().decrement(sitem->items.front()->tname(1, false));
+            recalc = true;
         }
     }
 }
