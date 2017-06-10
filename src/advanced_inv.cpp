@@ -332,8 +332,10 @@ void advanced_inventory::print_items( advanced_inventory_pane &pane, bool active
 
         std::string item_name = it.display_name();
         //std::string item_name = string_format( "%c %s", sitem.desirability, it.display_name().c_str());
+        int printOffset = 2;
         if( get_option<bool>( "ITEM_SYMBOLS" ) ) {
             item_name = string_format( "%s %s", it.symbol().c_str(), item_name.c_str() );
+            printOffset = 4;
         }
         item_name = string_format( "%c %s", sitem.desirability, item_name.c_str());
 
@@ -387,8 +389,8 @@ void advanced_inventory::print_items( advanced_inventory_pane &pane, bool active
         mvwprintz( window, 6 + x, vol_startpos, print_color, it_vol );
 
         if( active && sitem.autopickup ) {
-            mvwprintz( window, 6 + x, 1, magenta_background( it.color_in_inventory() ),
-                       compact ? it.tname().substr( 0, 1 ) : ">" );
+            mvwprintz( window, 6 + x, 1 + printOffset, magenta_background( it.color_in_inventory() ), "%s",
+                       ( compact ? it.tname().substr( printOffset, 1 ) : ">" ).c_str() );
         }
     }
 }
@@ -1464,7 +1466,7 @@ void advanced_inventory::display() // !! This is where new keybindings are regis
         if( action == "CATEGORY_SELECTION" ) {
             inCategoryMode = !inCategoryMode;
             spane.redraw = true; // We redraw to force the color change of the highlighted line and header text.
-        } else if (action == "HELP_KEYBINDINGS") {
+        } else if( action == "HELP_KEYBINDINGS" ) {
             redraw = true;
         } else if (action == "ITEMS_DEFAULT") {
             for( side cside : { left, right } ) {
@@ -2438,9 +2440,9 @@ void advanced_inv_area::set_container_position()
         vstor = vp->part_index();
     } else {
         veh = nullptr;
-        vstor = -1;
+    vstor = -1;
     }
-}
+    }
 
 
 void advanced_inv()
