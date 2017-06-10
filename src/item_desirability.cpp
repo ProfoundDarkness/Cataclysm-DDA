@@ -34,6 +34,15 @@ item_desirability &get_item_desirability()
     return single_instance;
 }
 
+const std::string item_desirability::clean_string(const std::string &sItemName) const
+{
+    static const std::string find_string = " (";
+    std::string::size_type pos;
+    pos = sItemName.find(find_string);
+    std::string const out = sItemName.substr(0, pos);
+    return out;
+}
+
 void item_desirability::clear()
 {
     loaded = false;
@@ -42,40 +51,44 @@ void item_desirability::clear()
 
 char item_desirability::get(const std::string &sItemName)
 {
-    if (map_interest.find(sItemName) == map_interest.end())
+    std::string const cleaned = clean_string(sItemName);
+    if (map_interest.find(cleaned) == map_interest.end())
         return ' ';
-    return map_interest[sItemName];
+    return map_interest[cleaned];
 }
 
 void item_desirability::increment(const std::string &sItemName)
 {
-    if (map_interest.find(sItemName) == map_interest.end())
+    std::string const cleaned = clean_string(sItemName);
+    if (map_interest.find(cleaned) == map_interest.end())
     {
-        map_interest[sItemName] = '1';
-        map_interest[sItemName]--;
+        map_interest[cleaned] = '1';
+        map_interest[cleaned]--;
     }
 
-    ++map_interest[sItemName];
-    if (map_interest[sItemName] > '9')
-        map_interest[sItemName] = '1';
+    ++map_interest[cleaned];
+    if (map_interest[cleaned] > '9')
+        map_interest[cleaned] = '1';
 }
 
 void item_desirability::decrement(const std::string &sItemName)
 {
-    if (map_interest.find(sItemName) == map_interest.end())
+    std::string const cleaned = clean_string(sItemName);
+    if (map_interest.find(cleaned) == map_interest.end())
     {
-        map_interest[sItemName] = '9';
-        map_interest[sItemName]++;
+        map_interest[cleaned] = '9';
+        map_interest[cleaned]++;
     }
-    --map_interest[sItemName];
-    if (map_interest[sItemName] < '1')
-        map_interest[sItemName] = '9';
+    --map_interest[cleaned];
+    if (map_interest[cleaned] < '1')
+        map_interest[cleaned] = '9';
 }
 
 void item_desirability::remove(const std::string &sItemName)
 {
-    if (map_interest.find(sItemName) != map_interest.end())
-        map_interest.erase(sItemName);
+    std::string const cleaned = clean_string(sItemName);
+    if (map_interest.find(cleaned) != map_interest.end())
+        map_interest.erase(cleaned);
 }
 
 bool item_desirability::save()

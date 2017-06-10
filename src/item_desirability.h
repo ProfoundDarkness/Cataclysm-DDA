@@ -14,6 +14,8 @@ class item_desirability : public JsonSerializer, public JsonDeserializer
     private:
         std::unordered_map<std::string, char> map_interest;
 
+        const std::string clean_string(const std::string &sItemName) const;
+
         mutable bool loaded;
 
     public:
