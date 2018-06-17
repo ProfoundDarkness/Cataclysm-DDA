@@ -95,9 +95,9 @@ bool item_desirability::save()
 {
     auto savefile = FILENAMES["itemdesirability"];
 
-        savefile = world_generator->active_world->world_path + "/" + base64_encode(g->u.name) + ".idr.json";
+        savefile = world_generator->active_world->folder_path() + "/" + base64_encode(g->u.name) + ".idr.json";
 
-        const std::string player_save = world_generator->active_world->world_path + "/" + base64_encode(g->u.name) + ".sav";
+        const std::string player_save = world_generator->active_world->folder_path() + "/" + base64_encode(g->u.name) + ".sav";
         if( !file_exist( player_save ) ) {
             return true; //Character not saved yet.
         }
@@ -112,7 +112,7 @@ void item_desirability::load()
 {
     loaded = false;
     std::string sFile = FILENAMES["itemdesirability"];
-    sFile = world_generator->active_world->world_path + "/" + base64_encode(g->u.name) + ".idr.json";
+    sFile = world_generator->active_world->folder_path() + "/" + base64_encode(g->u.name) + ".idr.json";
     if( !read_from_file_optional( sFile, *this ) ) {
         if (save()) {
             remove_file(sFile);
