@@ -166,6 +166,10 @@ struct advanced_inv_listitem {
      */
     bool autopickup;
     /**
+     * The character the user has selected for memory of an item, '0' indicates no memory.
+     */
+    char itemmem;
+    /**
      * The stack count represented by this item, should be >= 1, should be 1
      * for anything counted by charges.
      */

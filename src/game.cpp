@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "item_memmark.h"
 #include "action.h"
 #include "activity_handlers.h"
 #include "artifact.h"
@@ -635,6 +636,7 @@ void game::setup()
     mission::clear_all();
     Messages::clear_messages();
     events = event_manager();
+    get_item_memmark().clear();
 
     SCT.vSCT.clear(); //Delete pending messages
 
@@ -2648,6 +2650,7 @@ void game::load( const save_t &name )
             }
         }
     }
+    get_item_memmark().load();
 
     u.reset();
     draw();
@@ -2827,6 +2830,7 @@ bool game::save()
             !save_artifacts() ||
             !save_maps() ||
             !get_auto_pickup().save_character() ||
+            !get_item_memmark().save() ||
             !get_safemode().save_character() ||
         !write_to_file_exclusive( get_world_base_save_path() + "/uistate.json", [&]( std::ostream & fout ) {
         JsonOut jsout( fout );

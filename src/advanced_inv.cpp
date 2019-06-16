@@ -1,5 +1,6 @@
 #include "advanced_inv.h"
 
+#include "item_memmark.h"
 #include "auto_pickup.h"
 #include "avatar.h"
 #include "cata_utility.h"
@@ -374,6 +375,7 @@ void advanced_inventory::print_items( advanced_inventory_pane &pane, bool active
         if( get_option<bool>( "ITEM_SYMBOLS" ) ) {
             item_name = string_format( "%s %s", it.symbol(), item_name );
         }
+        item_name = string_format( "%c %s", sitem.itemmem, item_name );
 
         //print item name
         trim_and_print( window, 6 + x, compact ? 1 : 4, max_name_length, thiscolor, item_name );
@@ -835,6 +837,7 @@ advanced_inv_listitem::advanced_inv_listitem( item *an_item, int index, int coun
     , name( an_item->tname( count ) )
     , name_without_prefix( an_item->tname( 1, false ) )
     , autopickup( get_auto_pickup().has_rule( an_item ) )
+    , itemmem( get_item_memmark().get( an_item->tname( 1, false ) ) )
     , stacks( count )
     , volume( an_item->volume() * stacks )
     , weight( an_item->weight() * stacks )
@@ -854,6 +857,7 @@ advanced_inv_listitem::advanced_inv_listitem( const std::list<item *> &list, int
     name( list.front()->tname( list.size() ) ),
     name_without_prefix( list.front()->tname( 1, false ) ),
     autopickup( get_auto_pickup().has_rule( list.front() ) ),
+    itemmem( get_item_memmark().get( list.front()->tname( 1, false ) ) ),
     stacks( list.size() ),
     volume( list.front()->volume() * stacks ),
     weight( list.front()->weight() * stacks ),
@@ -868,6 +872,7 @@ advanced_inv_listitem::advanced_inv_listitem()
     , area()
     , id( "null" )
     , autopickup()
+    , itemmem()
     , stacks()
     , cat( nullptr )
 {
@@ -1527,6 +1532,9 @@ void advanced_inventory::display()
     ctxt.register_action( "ITEMS_AROUND" );
     ctxt.register_action( "ITEMS_DRAGGED_CONTAINER" );
     ctxt.register_action( "ITEMS_CONTAINER" );
+    ctxt.register_action( "ITEM_MEMORY_CLEAR" );
+    ctxt.register_action( "ITEM_MEMORY_INCREASE" );
+    ctxt.register_action( "ITEM_MEMORY_DECREASE" );
 
     ctxt.register_action( "ITEMS_DEFAULT" );
     ctxt.register_action( "SAVE_DEFAULT" );
@@ -1962,6 +1970,27 @@ void advanced_inventory::display()
                 popup( _( "No vehicle there!" ) );
                 redraw = true;
             }
+        } else if( action == "ITEM_MEMORY_CLEAR" )
+        {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_memmark().remove( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
+        } else if( action == "ITEM_MEMORY_INCREASE" )
+        {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_memmark().increment( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
+        } else if( action == "ITEM_MEMORY_DECREASE" )
+        {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_memmark().decriment( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
         }
     }
 }
