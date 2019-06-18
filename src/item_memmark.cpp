@@ -1,5 +1,4 @@
 #include "game.h"
-#include "avatar.h"
 #include "player.h"
 #include "item_memmark.h"
 #include "output.h"
@@ -102,34 +101,31 @@ void item_memmark::remove( const std::string &sItemName )
 
 bool item_memmark::save()
 {
-    auto savefile = FILENAMES["itemmem"];
-
-    savefile = world_generator->active_world->folder_path() + "/" + base64_encode(
-                   g->u.name ) + ".idr.json";
-    const std::string player_save = world_generator->active_world->folder_path() + "/" + base64_encode(
-                                        g->u.name ) + ".sav";
+    const std::string savefile = g->get_player_base_save_path() + "imem.json";
+    const std::string player_save = g->get_player_base_save_path() + ".sav";
     if( !file_exist( player_save ) ) {
-        return true;
+        return true;    // Player data hasn't been saved yet.
     }
 
     return write_to_file( savefile, [&]( std::ostream & fout ) {
         JsonOut jout( fout, true );
         serialize( jout );
-    }, _( "item memory marks" ) );
+    }, _( "item memory marks data" ) );
 }
 
 void item_memmark::load()
 {
     loaded = false;
-    std::string sFile = FILENAMES["itemmem"];
-    sFile = world_generator->active_world->folder_path() + "/" + base64_encode(
-                g->u.name ) + "idr.json";
-    if( !read_from_file_optional( sFile, *this ) )
+    const std::string sFile = g->get_player_base_save_path() + "imem.json";
+    if( !read_from_file_optional_json( sFile, [this]( JsonIn & jsin ) {
+    deserialize( jsin );
+    } ) ) {
         if( save() ) {
             remove_file( sFile );
         }
+    }
+    remove_file( sFile );
     loaded = true;
-    printf( "Loaded!\n" );
 }
 
 void item_memmark::serialize( JsonOut &json ) const
