@@ -900,9 +900,17 @@ bool vehicle::start_engine( const int e )
 
     // Damaged engines have a chance of failing to start
     if( x_in_y( dmg * 100, 120 ) ) {
-        sounds::sound( pos, eng.info().engine_noise_factor(), sounds::sound_t::movement,
-                       string_format( _( "the %s clanking and grinding" ), eng.name() ), true, "vehicle",
-                       "engine_clanking_fail" );
+        if( is_engine_type( e, fuel_type_battery ) ) {
+            // Electric engines either start or they are "broken for good."  They shouldn't 'fail to start' and still be useable.
+            sounds::sound( pos, eng.info().engine_noise_factor(), sounds::sound_t::alarm,
+                           string_format( _( "the %s clicking once" ), eng.name() ), true, "vehicle",
+                           "engine_single_click_fail" );
+            damage_direct( engines[ e ], part_info( engines[ e ] ).durability );
+        } else {
+            sounds::sound( pos, eng.info().engine_noise_factor(), sounds::sound_t::movement,
+                           string_format( _( "the %s clanking and grinding" ), eng.name() ), true, "vehicle",
+                           "engine_clanking_fail" );
+        }
         return false;
     }
     sounds::sound( pos, eng.info().engine_noise_factor(), sounds::sound_t::movement,
