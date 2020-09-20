@@ -44,6 +44,9 @@ class advanced_inv_listitem
          * Whether auto pickup is enabled for this item (based on the name).
          */
         bool autopickup = false;
+        /** Which marker type the user has selected if any (0 indicates no marker)
+         */
+        char desirability;
         /**
          * The stack count represented by this item, should be >= 1, should be 1
          * for anything counted by charges.

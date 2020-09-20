@@ -1,6 +1,7 @@
 #include "advanced_inv.h"
 
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "avatar.h"
 #include "cata_utility.h"
 #include "catacharset.h"
@@ -415,6 +416,7 @@ void advanced_inventory::print_items( const advanced_inventory_pane &pane, bool 
         if( get_option<bool>( "ITEM_SYMBOLS" ) ) {
             item_name = string_format( "%s %s", it.symbol(), item_name );
         }
+        item_name = string_format( "%c %s", sitem.desirability, item_name );
 
         //print item name
         trim_and_print( window, point( compact ? 1 : 4, 6 + x ), max_name_length, thiscolor, item_name );
@@ -1083,6 +1085,9 @@ void advanced_inventory::display()
     ctxt.register_action( "ITEMS_AROUND" );
     ctxt.register_action( "ITEMS_DRAGGED_CONTAINER" );
     ctxt.register_action( "ITEMS_CONTAINER" );
+    ctxt.register_action( "ITEM_PRIORITY_CLEAR" );
+    ctxt.register_action( "ITEM_PRIORITY_INCREASE" );
+    ctxt.register_action( "ITEM_PRIORITY_DECREASE" );
 
     ctxt.register_action( "ITEMS_DEFAULT" );
     ctxt.register_action( "SAVE_DEFAULT" );
@@ -1501,6 +1506,25 @@ void advanced_inventory::display()
                 popup( _( "No vehicle storage space there!" ) );
                 redraw = true;
             }
+        } else if( action == "ITEM_PRIORITY_CLEAR" ) { //additional item desire code.
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().remove(sitem->items.front()->tname(1, false));
+            //sitem->name_without_prefix;
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_INCREASE") {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().increment(sitem->items.front()->tname(1, false));
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_DECREASE") {
+            if( sitem == nullptr || !sitem->is_item_entry() ) {
+                continue;
+            }
+            get_item_desirability().decrement(sitem->items.front()->tname(1, false));
+            recalc = true;
         }
     }
 }

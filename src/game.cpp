@@ -30,6 +30,7 @@
 #include "activity_handlers.h"
 #include "artifact.h"
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "avatar.h"
 #include "avatar_action.h"
 #include "bionics.h"
@@ -648,6 +649,7 @@ void game::setup()
     mission::clear_all();
     Messages::clear_messages();
     timed_events = timed_event_manager();
+    get_item_desirability().clear();
 
     SCT.vSCT.clear(); //Delete pending messages
 
@@ -2679,6 +2681,7 @@ void game::load( const save_t &name )
 
     init_autosave();
     get_auto_pickup().load_character(); // Load character auto pickup rules
+    get_item_desirability().load();     // Load character desireability notes
     get_auto_notes_settings().load();   // Load character auto notes settings
     get_safemode().load_character(); // Load character safemode rules
     zone_manager::get_manager().load_zones(); // Load character world zones
@@ -2911,6 +2914,7 @@ bool game::save()
             !save_artifacts() ||
             !save_maps() ||
             !get_auto_pickup().save_character() ||
+            !get_item_desirability().save() ||
             !get_auto_notes_settings().save() ||
             !get_safemode().save_character() ||
         !write_to_file( get_world_base_save_path() + "/uistate.json", [&]( std::ostream & fout ) {

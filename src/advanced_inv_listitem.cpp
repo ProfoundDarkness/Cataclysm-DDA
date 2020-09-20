@@ -1,4 +1,5 @@
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "avatar.h"
 #include "cata_utility.h"
 #include "catacharset.h"
@@ -39,6 +40,7 @@ advanced_inv_listitem::advanced_inv_listitem( item *an_item, int index, int coun
     , name( an_item->tname( count ) )
     , name_without_prefix( an_item->tname( 1, false ) )
     , autopickup( get_auto_pickup().has_rule( an_item ) )
+    , desirability( get_item_desirability().get( an_item->tname( 1, false ) ) )
     , stacks( count )
     , volume( an_item->volume() * stacks )
     , weight( an_item->weight() * stacks )
@@ -58,6 +60,7 @@ advanced_inv_listitem::advanced_inv_listitem( const std::list<item *> &list, int
     name( list.front()->tname( list.size() ) ),
     name_without_prefix( list.front()->tname( 1, false ) ),
     autopickup( get_auto_pickup().has_rule( list.front() ) ),
+    desirability(get_item_desirability().get(list.front()->tname(1, false))),
     stacks( list.size() ),
     volume( list.front()->volume() * stacks ),
     weight( list.front()->weight() * stacks ),
@@ -72,6 +75,7 @@ advanced_inv_listitem::advanced_inv_listitem()
     , area()
     , id( "null" )
     , autopickup()
+    , desirability()
     , stacks()
     , cat( nullptr )
 {
@@ -83,6 +87,7 @@ advanced_inv_listitem::advanced_inv_listitem( const item_category *cat )
     , id( "null" )
     , name( cat->name() )
     , autopickup()
+    , desirability()
     , stacks()
     , cat( cat )
 {
