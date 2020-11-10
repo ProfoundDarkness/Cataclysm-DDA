@@ -205,6 +205,8 @@ std::string advanced_inventory::get_sortname( advanced_inv_sortby sortby )
             return _( "spoilage" );
         case SORTBY_PRICE:
             return _( "barter value" );
+        case SORTBY_DESIRE:
+            return _( "Desirabilty" );
     }
     return "!BUG!";
 }
@@ -570,6 +572,10 @@ struct advanced_inv_sorter {
                     return d1.items.front()->price( true ) > d2.items.front()->price( true );
                 }
                 break;
+            case SORTBY_DESIRE:
+                if ( d1.desirability != d2.desirability ) {
+                    return d1.desirability < d2.desirability;
+                }
         }
         // secondary sort by name
         const std::string *n1;
@@ -1031,6 +1037,7 @@ bool advanced_inventory::show_sort_menu( advanced_inventory_pane &pane )
     sm.addentry( SORTBY_AMMO,     true, 'a', get_sortname( SORTBY_AMMO ) );
     sm.addentry( SORTBY_SPOILAGE,   true, 's', get_sortname( SORTBY_SPOILAGE ) );
     sm.addentry( SORTBY_PRICE, true, 'b', get_sortname( SORTBY_PRICE ) );
+    sm.addentry( SORTBY_DESIRE,  true, 'r', get_sortname( SORTBY_DESIRE ) );
     // Pre-select current sort.
     sm.selected = pane.sortby - SORTBY_NONE;
     // Calculate key and window variables, generate window,

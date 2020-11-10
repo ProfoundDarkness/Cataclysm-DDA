@@ -60,7 +60,7 @@ advanced_inv_listitem::advanced_inv_listitem( const std::list<item *> &list, int
     name( list.front()->tname( list.size() ) ),
     name_without_prefix( list.front()->tname( 1, false ) ),
     autopickup( get_auto_pickup().has_rule( list.front() ) ),
-    desirability(get_item_desirability().get(list.front()->tname(1, false))),
+    desirability(get_item_desirability().get(list.front()->tname( 1, false ) ) ),
     stacks( list.size() ),
     volume( list.front()->volume() * stacks ),
     weight( list.front()->weight() * stacks ),

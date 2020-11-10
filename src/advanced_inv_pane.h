@@ -22,7 +22,8 @@ enum advanced_inv_sortby {
     SORTBY_DAMAGE,
     SORTBY_AMMO,
     SORTBY_SPOILAGE,
-    SORTBY_PRICE
+    SORTBY_PRICE,
+    SORTBY_DESIRE
 };
 
 /**
