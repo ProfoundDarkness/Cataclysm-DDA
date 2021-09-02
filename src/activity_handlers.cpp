@@ -635,7 +635,6 @@ static void set_up_butchery( player_activity &act, player &u, butcher_type actio
         act.targets.pop_back();
         return;
     }
-
     if( action == F_DRESS && ( corpse_item.has_flag( flag_FIELD_DRESS ) ||
                                corpse_item.has_flag( flag_FIELD_DRESS_FAILED ) ) ) {
         u.add_msg_if_player( m_info, _( "This corpse is already field dressed." ) );
@@ -661,7 +660,16 @@ static void set_up_butchery( player_activity &act, player &u, butcher_type actio
             act.targets.pop_back();
             return;
         }
-        if( !( corpse_item.has_flag( flag_FIELD_DRESS ) ||
+        //basically coppied from game, better to turn this into a function call eventually.
+        bool has_organs = false;
+        const mtype *dead_mon = corpse_item.get_mtype();
+        for( const harvest_entry &entry : dead_mon->harvest.obj() ) {
+            if( entry.type == "offal" ) {
+                has_organs = true;
+                u.add_msg_if_player( m_info, _( "Corpse has organs" ) );
+            }
+        }
+        if( has_organs && !( corpse_item.has_flag( flag_FIELD_DRESS ) ||
                corpse_item.has_flag( flag_FIELD_DRESS_FAILED ) ) ) {
             u.add_msg_if_player( m_bad, _( "You need to perform field dressing before quartering." ),
                                  corpse.nname() );
