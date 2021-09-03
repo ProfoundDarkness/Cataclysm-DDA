@@ -1,6 +1,7 @@
 #include "advanced_inv_listitem.h"
 
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "cata_assert.h"
 #include "item.h"
 #include "item_tname.h"
@@ -14,6 +15,7 @@ advanced_inv_listitem::advanced_inv_listitem( const item_location &an_item, int 
     , name_without_prefix( an_item->tname( 1, tname::tname_sort_key ) )
     , contents_count( an_item->aggregated_contents().count )
     , autopickup( get_auto_pickup().has_rule( & * an_item ) )
+    , desirability( get_item_desirability().get( an_item->tname( 1, false ) ) )
     , stacks( count )
     , volume( an_item->volume() * stacks )
     , weight( an_item->weight() * stacks )
@@ -34,6 +36,7 @@ advanced_inv_listitem::advanced_inv_listitem( const std::vector<item_location> &
     name_without_prefix( list.front()->tname( 1, tname::tname_sort_key ) ),
     contents_count( list.front()->aggregated_contents().count ),
     autopickup( get_auto_pickup().has_rule( & * list.front() ) ),
+    desirability(get_item_desirability().get(list.front()->tname(1, false))),
     stacks( list.size() ),
     volume( list.front()->volume() * stacks ),
     weight( list.front()->weight() * stacks ),

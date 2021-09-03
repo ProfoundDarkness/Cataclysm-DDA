@@ -21,6 +21,7 @@
 #include "advanced_inv_listitem.h"
 #include "advanced_inv_pagination.h"
 #include "auto_pickup.h"
+#include "item_desirability.h"
 #include "avatar.h"
 #include "calendar.h"
 #include "cata_assert.h"
@@ -236,7 +237,8 @@ std::string advanced_inventory::get_sortname( advanced_inv_sortby sortby )
             return _( "spoilage" );
         case SORTBY_PRICE:
             return _( "barter value" );
-    }
+        case SORTBY_DESIRE:
+            return _( "Desirabilty" );    }
     return "!BUG!";
 }
 
@@ -489,6 +491,7 @@ void advanced_inventory::print_items( side p, bool active )
         if( get_option<bool>( "ITEM_SYMBOLS" ) ) {
             item_name = string_format( "%s %s", it.symbol(), item_name );
         }
+        item_name = string_format( "%c %s", sitem.desirability, item_name );
 
         //print item name
         trim_and_print( window, point( compact ? 1 : 4, 6 + item_line ), max_name_length, thiscolor,
@@ -651,6 +654,11 @@ struct advanced_inv_sorter {
             case SORTBY_PRICE:
                 if( d1.items.front()->price( true ) != d2.items.front()->price( true ) ) {
                     return d1.items.front()->price( true ) > d2.items.front()->price( true );
+                }
+                break;
+            case SORTBY_DESIRE:
+                if ( d1.desirability != d2.desirability ) {
+                    return d1.desirability < d2.desirability;
                 }
                 break;
         }
@@ -1223,6 +1231,7 @@ bool advanced_inventory::show_sort_menu( advanced_inventory_pane &pane )
     sm.addentry( SORTBY_AMMO,     true, 'a', get_sortname( SORTBY_AMMO ) );
     sm.addentry( SORTBY_SPOILAGE, true, 's', get_sortname( SORTBY_SPOILAGE ) );
     sm.addentry( SORTBY_PRICE,    true, 'b', get_sortname( SORTBY_PRICE ) );
+    sm.addentry( SORTBY_DESIRE,  true, 'r', get_sortname( SORTBY_DESIRE ) );
     // Pre-select current sort.
     sm.selected = pane.sortby - SORTBY_NONE;
     // Calculate key and window variables, generate window,
@@ -1277,6 +1286,9 @@ input_context advanced_inventory::register_ctxt() const
     ctxt.register_action( "ITEMS_DRAGGED_CONTAINER" );
     ctxt.register_action( "ITEMS_CONTAINER" );
     ctxt.register_action( "ITEMS_PARENT" );
+    ctxt.register_action( "ITEM_PRIORITY_CLEAR" );
+    ctxt.register_action( "ITEM_PRIORITY_INCREASE" );
+    ctxt.register_action( "ITEM_PRIORITY_DECREASE" );
 
     ctxt.register_action( "ITEMS_DEFAULT" );
     ctxt.register_action( "SAVE_DEFAULT" );
@@ -2036,6 +2048,24 @@ void advanced_inventory::display()
             } else {
                 popup_getkey( _( "There's no vehicle storage space there." ) );
             }
+        } else if( action == "ITEM_PRIORITY_CLEAR" ) { //additional item desire code.
+            if( sitem == nullptr ) {
+                continue;
+            }
+            get_item_desirability().remove( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_INCREASE" ) {
+            if( sitem == nullptr ) {
+                continue;
+            }
+            get_item_desirability().increment( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
+        } else if( action == "ITEM_PRIORITY_DECREASE" ) {
+            if( sitem == nullptr  ) {
+                continue;
+            }
+            get_item_desirability().decrement( sitem->items.front()->tname( 1, false ) );
+            recalc = true;
         }
     }
 }
