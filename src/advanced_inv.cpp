@@ -2052,19 +2052,19 @@ void advanced_inventory::display()
             if( sitem == nullptr ) {
                 continue;
             }
-            get_item_desirability().remove( sitem->items.front()->tname( 1, false ) );
+            get_item_desirability().remove( &*sitem->items.front() );
             recalc = true;
         } else if( action == "ITEM_PRIORITY_INCREASE" ) {
             if( sitem == nullptr ) {
                 continue;
             }
-            get_item_desirability().increment( sitem->items.front()->tname( 1, false ) );
+            get_item_desirability().increment( &*sitem->items.front() );
             recalc = true;
         } else if( action == "ITEM_PRIORITY_DECREASE" ) {
             if( sitem == nullptr  ) {
                 continue;
             }
-            get_item_desirability().decrement( sitem->items.front()->tname( 1, false ) );
+            get_item_desirability().decrement( &*sitem->items.front() );
             recalc = true;
         }
     }

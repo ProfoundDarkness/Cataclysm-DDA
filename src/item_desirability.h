@@ -14,17 +14,17 @@ class item_desirability : public JsonSerializer, public JsonDeserializer
     private:
         std::unordered_map<std::string, char> map_interest;
 
-        const std::string clean_string(const std::string &sItemName) const;
+        const std::string clean_string(const item *it ) const;
 
         mutable bool loaded;
 
     public:
         item_desirability() : loaded( false ) {}
 
-        char get( const std::string &sItemName );
-        void increment( const std::string &sItemName );
-        void decrement( const std::string &sItemName );
-        void remove( const std::string &sItemName );
+        char get( const item *it );
+        void increment( const item *it );
+        void decrement( const item *it );
+        void remove( const item *it );
 
         void clear();
 
