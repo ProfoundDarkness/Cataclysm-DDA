@@ -11,6 +11,8 @@
 #include "debug.h"
 #include "filesystem.h"
 #include "game.h"
+#include "item.h"
+#include "item_contents.h"
 #include "item_factory.h"
 #include "itype.h"
 #include "json.h"
@@ -36,7 +38,7 @@ const std::string item_desirability::clean_string( const item *it ) const
 {
     std::string out;
     item_contents contents = it->get_contents();
-    if( contents.num_item_stacks() == 1 ) {
+    if( contents.num_item_stacks() == 1 && contents.only_item().has_label() ) {
         const item &contents_item = contents.only_item();
         out = contents_item.label( 1 );
     } else {
