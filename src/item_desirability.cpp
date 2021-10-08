@@ -36,15 +36,16 @@ item_desirability &get_item_desirability()
 
 const std::string item_desirability::clean_string( const item *it ) const
 {
-    std::string out;
     item_contents contents = it->get_contents();
-    if( contents.num_item_stacks() == 1 && contents.only_item().has_label() ) {
+    if( contents.num_item_stacks() == 1 ) {
         const item &contents_item = contents.only_item();
-        out = contents_item.label( 1 );
-    } else {
-        out = it->label( 1 );
+        // bug? item::has_label(), when called from outside item class, always returning false, workaround for string check instead.
+        const std::string it_label = contents_item.label( 1 );
+        if ( it_label.compare( "none" ) ) {
+            return it_label;
+        }
     }
-    return out;
+    return it->label( 1 );
 }
 
 void item_desirability::clear()
