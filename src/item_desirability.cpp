@@ -15,6 +15,8 @@
 #include "item_contents.h"
 #include "item_factory.h"
 #include "itype.h"
+#include "iuse.h"
+#include "iuse_actor.h"
 #include "json.h"
 #include "output.h"
 #include "path_info.h"
@@ -34,18 +36,17 @@ item_desirability &get_item_desirability()
     return single_instance;
 }
 
-const std::string item_desirability::clean_string( const item *it ) const
+const std::string item_desirability::get_string( const item *it ) const
 {
     item_contents contents = it->get_contents();
     if( contents.num_item_stacks() == 1 ) {
         const item &contents_item = contents.only_item();
         // bug? item::has_label(), when called from outside item class, always returning false, workaround for string check instead.
-        const std::string it_label = contents_item.label( 1 );
-        if ( it_label.compare( "none" ) ) {
-            return it_label;
+        if ( contents_item.label( 1 ).compare( "none" ) ) {
+            return contents_item.typeId().str();
         }
     }
-    return it->label( 1 );
+    return it->typeId().str();
 }
 
 void item_desirability::clear()
@@ -56,44 +57,66 @@ void item_desirability::clear()
 
 char item_desirability::get( const item *it )
 {
-    std::string const cleaned = clean_string( it );
-    if ( map_interest.find( cleaned ) == map_interest.end() )
+    std::string const str = get_string( it );
+    if ( map_interest.find( str ) == map_interest.end() )
         return ' ';
-    return map_interest[cleaned];
+    return map_interest[str];
+}
+
+void item_desirability::set( const std::string str, char val )
+{
+    if ( val < '1' )
+      val = '9';
+    if ( val > '9' )
+      val = '1';
+    map_interest[str] = val;
 }
 
 void item_desirability::increment( const item *it )
 {
-    std::string const cleaned = clean_string( it );
-    if ( map_interest.find( cleaned ) == map_interest.end() )
-    {
-        map_interest[cleaned] = '1';
-        map_interest[cleaned]--;
-    }
+    std::string const str = get_string( it );
+    if ( map_interest.find( str ) == map_interest.end() )
+        map_interest[str] = '1'-1; //init
 
-    ++map_interest[cleaned];
-    if ( map_interest[cleaned] > '9' )
-        map_interest[cleaned] = '1';
+    char val = map_interest[str];
+    val++;
+    set( str, val );
+    if ( it->is_transformable() )
+    {
+        const use_function fn = it->type->use_methods.find( "transform" )->second;
+        const iuse_transform *act = dynamic_cast<const iuse_transform*>( fn.get_actor_ptr() );
+        set( act->target.str(), val );
+    }
 }
 
 void item_desirability::decrement( const item *it )
 {
-    std::string const cleaned = clean_string( it );
-    if ( map_interest.find( cleaned ) == map_interest.end() )
+    std::string const str = get_string( it );
+    if ( map_interest.find( str ) == map_interest.end() )
+        map_interest[str] = '9'+1;
+    
+    char val = map_interest[str];
+    val--;
+    set( str, val );
+    if ( it->is_transformable() )
     {
-        map_interest[cleaned] = '9';
-        map_interest[cleaned]++;
+        const use_function fn = it->type->use_methods.find( "transform" )->second;
+        const iuse_transform *act = dynamic_cast<const iuse_transform*>( fn.get_actor_ptr() );
+        set( act->target.str(), val );
     }
-    --map_interest[cleaned];
-    if ( map_interest[cleaned] < '1' )
-        map_interest[cleaned] = '9';
 }
 
 void item_desirability::remove( const item *it )
 {
-    std::string const cleaned = clean_string( it );
-    if ( map_interest.find( cleaned ) != map_interest.end() )
-        map_interest.erase( cleaned );
+    std::string const str = get_string( it );
+    if ( map_interest.find( str ) != map_interest.end() )
+        map_interest.erase( str );
+    if ( it->is_transformable() )
+    {
+        const use_function fn = it->type->use_methods.find( "transform" )->second;
+        const iuse_transform *act = dynamic_cast<const iuse_transform*>( fn.get_actor_ptr() );
+        map_interest.erase( act->target.str() );
+    }
 }
 
 bool item_desirability::save()
