@@ -9,12 +9,16 @@
 #include <iosfwd>
 #include "json.h"
 
-class item_desirability : public JsonSerializer, public JsonDeserializer
+class JsonArray;
+class JsonObject;
+class JsonOut;
+
+class item_desirability
 {
     private:
         std::unordered_map<std::string, char> map_interest;
 
-        const std::string get_string(const item *it ) const;
+        const std::string get_string( const item *it ) const;
 
         mutable bool loaded;
 
@@ -32,9 +36,8 @@ class item_desirability : public JsonSerializer, public JsonDeserializer
         void load();
         bool save();
 
-        using JsonSerializer::serialize;
-        void serialize( JsonOut &json ) const override;
-        void deserialize( JsonIn &jsin ) override;
+        void serialize( JsonOut &jsout ) const;
+        void deserialize( const JsonArray &ja );
 };
 
 item_desirability &get_item_desirability();
