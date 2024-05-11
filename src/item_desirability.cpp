@@ -44,6 +44,13 @@ const std::string item_desirability::get_string( const item *it ) const
         return it->get_mtype()->id.str();
     }
     // If an item is a pocket and only has one type of item inside, we really care about the contents.
+    // this code is problematic, it counts if all items are the same type only if they can stack - any damage variations miss the mark.
+    // I haven't found an alternative shy of inspecting every item in pockets for a matching item type... which is kind of happening with the if anyway...
+    if( it->contents_only_one_type() ) {
+        return it->get_contents().first_item().typeId().str();
+    }
+    /*
+    // this code is problematic, it really only works well for liquids and items which function as charges
     item_contents contents = it->get_contents();
     if( contents.num_item_stacks() == 1 ) {
         const item &contents_item = contents.only_item();
@@ -52,6 +59,7 @@ const std::string item_desirability::get_string( const item *it ) const
             return contents_item.typeId().str();
         }
     }
+    */
     // Otherwise just looking for the object, this is the general case.
     return it->typeId().str();
 }
