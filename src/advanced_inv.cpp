@@ -242,7 +242,7 @@ std::string advanced_inventory::get_sortname( advanced_inv_sortby sortby )
         case SORTBY_STACKS:
             return _( "amount" );
         case SORTBY_DESIRE:
-            return _( "Desirabilty" );    }
+            return _( "desirabilty" );
     }
     return "!BUG!";
 }
@@ -1253,7 +1253,7 @@ bool advanced_inventory::show_sort_menu( advanced_inventory_pane &pane )
     sm.addentry( SORTBY_PRICE,          true, 'b', get_sortname( SORTBY_PRICE ) );
     sm.addentry( SORTBY_PRICEPERVOLUME, true, 'r', get_sortname( SORTBY_PRICEPERVOLUME ) );
     sm.addentry( SORTBY_STACKS,         true, 't', get_sortname( SORTBY_STACKS ) );
-    sm.addentry( SORTBY_DESIRE,         true, 'r', get_sortname( SORTBY_DESIRE ) );
+    sm.addentry( SORTBY_DESIRE,         true, 'e', get_sortname( SORTBY_DESIRE ) );
     // Pre-select current sort.
     sm.selected = pane.sortby - SORTBY_NONE;
     // Calculate key and window variables, generate window,
