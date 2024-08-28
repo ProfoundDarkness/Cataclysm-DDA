@@ -206,17 +206,27 @@
       {
         "text": "I salvaged this combat exoskeleton.  Do you think you could repair it?",
         "condition": {
-          "or": [
-            { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "phase_immersion_suit" },
-            { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "rm13_armor" },
-            { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "combat_exoskeleton_light_salvaged" }
+          "and": [
+            { "u_has_items": { "item": "combat_exoskeleton_light_salvaged", "count": 1 } },
+            { "not": { "u_has_var": "dialogue_hub_rnd_u_project_ongoing", "value": "yes" } }
           ]
         },
         "topic": "TALK_ROBOFAC_INTERCOM_EXOSKELETON_REPAIR"
       },
       {
         "text": "How are my armor repairs coming?",
-        "condition": { "or": [ { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "combat_exoskeleton_light_salvaged" } ] },
+        "condition": {
+          "and": [
+            { "math": [ "u_timer_hub_rnd_u_waiting_on_hub", ">", "time('now')" ] },
+            {
+              "or": [
+                { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "combat_exoskeleton_light_salvaged" },
+                { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "phase_immersion_suit" },
+                { "u_has_var": "dialogue_hub_rnd_u_current_project", "value": "rm13_armor" }
+              ]
+            }
+          ]
+        },
         "topic": "TALK_ROBOFAC_INTERCOM_PROTOTYPE_ONGOING"
       },
       {
@@ -1107,7 +1117,7 @@
   },
   {
     "id": "TALK_ROBOFAC_INTERCOM_HWP_EXODII_2",
-    "//": "this is a lie. if the hub has done any kind of surveillance at all, they'd know that the exodii would consider melchior a heavy threat, and they are unwilling to approach until they're certain that they could effectively conceal its presence.",
+    "//": "this is a lie. if the hub has done any kind of surveillance at all, they'd know that the Exodii would consider melchior a heavy threat, and they are unwilling to approach until they're certain that they could effectively conceal its presence.",
     "type": "talk_topic",
     "dynamic_line": "Have you, now?  We are pleased to hear.  However, we still believe that approaching with an excess of wariness is a wise choice.  We feel that it would behoove us to understand more about this group before we approach directly, and so for the time being, understanding more about their general-use technology is our preferred course of action."
   },
@@ -1133,7 +1143,7 @@
   },
   {
     "id": "TALK_ROBOFAC_INTERCOM_HWP_EXODII_STARTED_1",
-    "//": "this is a half-truth. while the Hub does have an interest in understanding or reversing the cataclysm, their primary intent here is specifically to understand the Exodii better.",
+    "//": "this is a half-truth. while the Hub does have an interest in understanding or reversing the Cataclysm, their primary intent here is specifically to understand the Exodii better.",
     "type": "talk_topic",
     "dynamic_line": "The Cataclysm has illuminated hitherto unknown facts about our universe.  The opportunity to research - and perhaps understand - technology from not only another world, but another dimension entirely, is an exceptionally promising field of study.  Now more than ever is our continued delving into this field of study paramount; while our focus has shifted rather abruptly, we believe that if there is ever any chance of understanding or even reversing <the_cataclysm>, it would come from studies like this."
   },
@@ -1141,7 +1151,7 @@
     "id": "TALK_ROBOFAC_INTERCOM_HWP_EXODII_COMPLETE",
     "//": "creating EXODII barrel",
     "type": "talk_topic",
-    "dynamic_line": "The project was a success!  The ammo is fairly rudimentary, but ultimately proved simple to manufacture, and has lent itself well to large magazines.  We will transfer a copy of the conversion kit in a moment; it is capable of accepting the standard magazines that Exodii weapons usually use, and we have also begun production of specialized magazines ourselves.  Thank you for allowing us this opportunity.",
+    "dynamic_line": "The project was a success!  The ammo is fairly rudimentary, but ultimately proved simple to manufacture, and has lent itself well to large magazines.  We will transfer a copy of the conversion kit in a moment; it is capable of accepting specialized magazines that we have just begun to produce ourselves.  Thank you for allowing us this opportunity.",
     "speaker_effect": { "effect": [ { "math": [ "hub01_hwp_exotic_researched", "=", "1" ] } ] },
     "responses": [
       {

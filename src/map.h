@@ -701,7 +701,7 @@ class map
         bool sees( const tripoint &F, const tripoint &T, int range, int &bresenham_slope,
                    bool with_fields = true ) const;
         bool sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, int range, int &bresenham_slope,
-                   bool with_fields = true ) const;
+                   bool with_fields = true, bool allow_cached = true ) const;
         point sees_cache_key( const tripoint_bub_ms &from, const tripoint_bub_ms &to ) const;
     public:
         /**
@@ -965,7 +965,7 @@ class map
         }
         // TODO: fix point types (remove the first overload)
         furn_id furn( const tripoint &p ) const;
-        furn_id furn( const tripoint_bub_ms &p ) const;
+        furn_id furn( tripoint_bub_ms p ) const;
         // TODO: Get rid of untyped overload.
         furn_id furn( const point_bub_ms &p ) const {
             return furn( tripoint_bub_ms( p, abs_sub.z() ) );
@@ -1010,7 +1010,7 @@ class map
 
         // Terrain
         // TODO: fix point types (remove the first overload)
-        ter_id ter( const tripoint &p ) const;
+        ter_id ter( tripoint p ) const;
         ter_id ter( const tripoint_bub_ms &p ) const;
         // TODO: Get rid of untyped overload.
         ter_id ter( const point &p ) const {
@@ -1182,6 +1182,7 @@ class map
         bool can_put_items_ter_furn( const tripoint &p ) const;
         bool can_put_items_ter_furn( const tripoint_bub_ms &p ) const;
         // Checks terrain
+        bool has_flag_ter( const std::string &flag, const tripoint &p ) const;
         bool has_flag_ter( const std::string &flag, const tripoint_bub_ms &p ) const;
         bool has_flag_ter( const std::string &flag, const point_bub_ms &p ) const {
             return has_flag_ter( flag, tripoint_bub_ms( p, abs_sub.z() ) );
@@ -2399,11 +2400,9 @@ class map
             offset_p.y = p.y % SEEY;
             return unsafe_get_submap_at( p );
         }
-        submap *unsafe_get_submap_at( const tripoint_bub_ms &p, point_sm_ms &offset_p ) {
+        submap *unsafe_get_submap_at( const tripoint_bub_ms p, point_sm_ms &offset_p ) {
             tripoint_bub_sm sm;
-            point_sm_ms_ib l;
-            std::tie( sm, l ) = project_remain<coords::sm>( p );
-            offset_p = point_sm_ms( l );
+            std::tie( sm, offset_p ) = project_remain<coords::sm>( p );
             return unsafe_get_submap_at( p );
         }
         // TODO: fix point types (remove the first overload)
@@ -2413,11 +2412,9 @@ class map
             return unsafe_get_submap_at( p );
         }
         const submap *unsafe_get_submap_at(
-            const tripoint_bub_ms &p, point_sm_ms &offset_p ) const {
+            const tripoint_bub_ms p, point_sm_ms &offset_p ) const {
             tripoint_bub_sm sm;
-            point_sm_ms_ib l;
-            std::tie( sm, l ) = project_remain<coords::sm>( p );
-            offset_p = point_sm_ms( l );
+            std::tie( sm, offset_p ) = project_remain<coords::sm>( p );
             return unsafe_get_submap_at( p );
         }
         // TODO: Get rid of untyped overload
