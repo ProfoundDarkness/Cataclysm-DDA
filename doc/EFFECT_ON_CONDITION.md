@@ -517,6 +517,9 @@ alpha talker has bodytype `migo` , and beta has bodytype `human`
 ```
 
 ### `u_has_var`, `npc_has_var`
+
+**DEPRECATED**, use `compare_string` in format `{ "compare_string": [ "yes", { "npc_val": "name_of_the_variable" } ] }`
+
 - type: string
 - checks do alpha or beta talker has specific variables, that was added `u_add_var` or `npc_add_var`
 - `type`, `context` and `value` of the variable is also required
@@ -532,7 +535,7 @@ Note: Not to be confused with the global `has_var` **(no prefix)**, used as [dia
 #### Examples
 Checks do alpha talker has `u_met_sadie` variable
 ```json
-{ "u_has_var": "general_meeting_u_met_sadie", "value": "yes" }
+{ "compare_string": [ "yes", { "u_val": "general_meeting_u_met_sadie" } ] }
 ```
 
 ### `expects_vars`
@@ -956,6 +959,41 @@ check do you wield something with `WHIP` flag
 check do you wield something with `LONG_SWORDS` weapon category
 ```json
 { "u_has_wielded_with_weapon_category": "LONG_SWORDS" }
+```
+
+### `u_has_wielded_with_skill`, `npc_has_wielded_with_skill`
+- type: string or [variable object](#variable-object)
+- return true if alpha or beta talker wield a gun or melee weapon with this skill
+- gun skills are delivered from `skill` field
+- melee weapon skill is delivered from the highest damage type item has
+
+#### Valid talkers:
+
+| Avatar | Character | NPC | Monster |  Furniture | Item |
+| ------ | --------- | --------- | ---- | ------- | --- | 
+| ✔️ | ✔️ | ✔️ | ❌ | ❌ | ❌ |
+
+#### Examples
+check do you wield a gun with `pistol` skill
+```json
+{ "u_has_wielded_with_skill": "pistol" } 
+```
+
+### `u_has_wielded_with_ammotype`, `npc_has_wielded_with_ammotype`
+- type: string or [variable object](#variable-object)
+- return true if alpha or beta talker wield an item that can have this ammo type
+- works with items that allow multiple ammo types
+
+#### Valid talkers:
+
+| Avatar | Character | NPC | Monster |  Furniture | Item |
+| ------ | --------- | --------- | ---- | ------- | --- | 
+| ✔️ | ✔️ | ✔️ | ❌ | ❌ | ❌ |
+
+#### Examples
+check do you wield a gun with `22` ammo type (.22 LR)
+```json
+{ "u_has_wielded_with_ammotype": "22" } 
 ```
 
 ### `u_can_see`, `npc_can_see`
@@ -1963,12 +2001,12 @@ Set effects to be executed when conditions are met and when conditions are not m
 Displays a different message the first time it is run and the second time onwards
 ```json
 {
-  "if": { "u_has_var": "eoc_sample_if_else_test", "value": "yes" },
+  "if": { "compare_string": [ "yes", { "u_val": "eoc_sample_if_else_test" } ] },
   "then": { "u_message": "You have variable." },
   "else": [
     { "u_message": "You don't have variable." },
     {
-      "if": { "not": { "u_has_var": "eoc_sample_if_else_test", "value": "yes" } },
+      "if": { "not": { "compare_string": [ "yes", { "u_val": "eoc_sample_if_else_test" } ] } },
       "then": [
         { "u_add_var": "eoc_sample_if_else_test", "value": "yes" },
         { "u_message": "Vriable added." }
@@ -2926,7 +2964,7 @@ Character forget martial art, stored in `ma_id` context value
 
 
 #### `u_add_var`, `npc_add_var`
-Save a personal variable, that you can check later using `u_has_var`, `npc_has_var` or `math` (see [Player or NPC conditions]( #Player_or_NPC_conditions) )
+Save a string as personal variable, that you can check later using `compare_string` (see [Player or NPC conditions](#Player_or_NPC_conditions) )
 
 | Syntax | Optionality | Value  | Info |
 | --- | --- | --- | --- | 
