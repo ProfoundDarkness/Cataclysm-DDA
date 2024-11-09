@@ -26,6 +26,7 @@
 #include "itype.h"
 #include "magic_enchantment.h"
 #include "make_static.h"
+#include "magic.h"
 #include "map.h"
 #include "map_iterator.h"
 #include "mapdata.h"
@@ -36,6 +37,7 @@
 #include "options.h"
 #include "output.h"
 #include "overmapbuffer.h"
+#include "pathfinding.h"
 #include "pimpl.h"
 #include "player_activity.h"
 #include "rng.h"
@@ -378,8 +380,9 @@ bool Character::can_power_mutation( const trait_id &mut ) const
     bool hunger = mut->hunger && get_kcal_percent() < 0.5f;
     bool thirst = mut->thirst && get_thirst() >= 260;
     bool sleepiness = mut->sleepiness && get_sleepiness() >= sleepiness_levels::EXHAUSTED;
+    bool mana = mut->mana && magic->available_mana() >= mut->cost;
 
-    return !hunger && !sleepiness && !thirst;
+    return !hunger && !sleepiness && !thirst && !mana;
 }
 
 void Character::mutation_reflex_trigger( const trait_id &mut )
@@ -553,6 +556,7 @@ void Character::recalculate_size()
             size_class = creature_size::medium;
         }
     }
+    path_settings->size = size_class;
 }
 
 void Character::mutation_effect( const trait_id &mut, const bool worn_destroyed_override )
@@ -822,6 +826,9 @@ void Character::activate_mutation( const trait_id &mut )
         if( mdata.sleepiness ) {
             mod_sleepiness( cost );
         }
+        if( mdata.mana ) {
+            magic->mod_mana( *this, -cost );
+        }
         tdata.powered = true;
         recalc_sight_limits();
     }
@@ -915,7 +922,7 @@ void Character::activate_mutation( const trait_id &mut )
         }        // Check for adjacent trees.
         bool adjacent_tree = false;
         map &here = get_map();
-        for( const tripoint &p2 : here.points_in_radius( pos(), 1 ) ) {
+        for( const tripoint_bub_ms &p2 : here.points_in_radius( pos_bub(), 1 ) ) {
             if( here.has_flag( ter_furn_flag::TFLAG_TREE, p2 ) ) {
                 adjacent_tree = true;
             }
