@@ -139,11 +139,10 @@ void item_desirability::remove( const item *it )
 
 bool item_desirability::save()
 {
-    cata_path sFile = PATH_INFO::player_base_save_path_path() + ".idr.json";
+    cata_path sFile = PATH_INFO::player_base_save_path() + ".idr.json";
 
     //Character not saved yet?
-    const std::string player_save = PATH_INFO::player_base_save_path() + ".sav";
-    if( !file_exist( player_save ) ) {
+    if( !file_exist( PATH_INFO::player_base_save_path() + ".sav" ) ) {
         return true;
     }
 
@@ -156,7 +155,7 @@ bool item_desirability::save()
 void item_desirability::load()
 {
     loaded = false;
-    cata_path sFile = PATH_INFO::player_base_save_path_path() + ".idr.json";
+    cata_path sFile = PATH_INFO::player_base_save_path() + ".idr.json";
     if( !read_from_file_optional_json( sFile, [&]( const JsonValue & jv ) {
     deserialize( jv );
     } ) ) {
