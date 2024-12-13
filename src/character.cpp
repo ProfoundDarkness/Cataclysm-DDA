@@ -1656,7 +1656,7 @@ player_activity Character::get_destination_activity() const
 
 void Character::mount_creature( monster &z )
 {
-    tripoint pnt = z.pos();
+    tripoint_bub_ms pnt = z.pos_bub();
     shared_ptr_fast<monster> mons = g->shared_from( z );
     if( mons == nullptr ) {
         add_msg_debug( debugmode::DF_CHARACTER, "mount_creature(): monster not found in critter_tracker" );
@@ -7744,17 +7744,6 @@ void Character::recalculate_enchantment_cache()
         recalculate_bodyparts();
     }
     recalc_hp();
-}
-
-double Character::calculate_by_enchantment( double modify, enchant_vals::mod value,
-        bool round_output ) const
-{
-    modify += enchantment_cache->get_value_add( value );
-    modify *= 1.0 + enchantment_cache->get_value_multiply( value );
-    if( round_output ) {
-        modify = std::round( modify );
-    }
-    return modify;
 }
 
 void Character::passive_absorb_hit( const bodypart_id &bp, damage_unit &du ) const
