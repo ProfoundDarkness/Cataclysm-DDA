@@ -68,19 +68,32 @@ std::string four_quadrants::to_string() const
                           ( *this )[quadrant::SW], ( *this )[quadrant::NW] );
 }
 
+void map::add_item_light_recursive( const tripoint_bub_ms &p, const item &it )
+{
+    float ilum = 0.0f; // brightness
+    units::angle iwidth = 0_degrees; // 0-360 degrees. 0 is a circular light_source
+    units::angle idir = 0_degrees;   // otherwise, it's a light_arc pointed in this direction
+    if( it.getlight( ilum, iwidth, idir ) ) {
+        if( iwidth > 0_degrees ) {
+            apply_light_arc( p, idir, ilum, iwidth );
+        } else {
+            add_light_source( p, ilum );
+        }
+    }
+
+    for( const item_pocket *pkt : it.get_all_contained_pockets() ) {
+        if( pkt->transparent() ) {
+            for( const item *cont : pkt->all_items_top() ) {
+                add_item_light_recursive( p, *cont );
+            }
+        }
+    }
+}
+
 void map::add_light_from_items( const tripoint_bub_ms &p, const item_stack &items )
 {
     for( const item &it : items ) {
-        float ilum = 0.0f; // brightness
-        units::angle iwidth = 0_degrees; // 0-360 degrees. 0 is a circular light_source
-        units::angle idir = 0_degrees;   // otherwise, it's a light_arc pointed in this direction
-        if( it.getlight( ilum, iwidth, idir ) ) {
-            if( iwidth > 0_degrees ) {
-                apply_light_arc( p, idir, ilum, iwidth );
-            } else {
-                add_light_source( p, ilum );
-            }
-        }
+        add_item_light_recursive( p, it );
     }
 }
 
@@ -661,18 +674,23 @@ void map::add_light_source( const tripoint_bub_ms &p, float luminance )
 
 lit_level map::light_at( const tripoint &p ) const
 {
+    return map::light_at( tripoint_bub_ms( p ) );
+}
+
+lit_level map::light_at( const tripoint_bub_ms &p ) const
+{
     if( !inbounds( p ) ) {
         return lit_level::DARK;    // Out of bounds
     }
 
-    const level_cache &map_cache = get_cache_ref( p.z );
+    const level_cache &map_cache = get_cache_ref( p.z() );
     const auto &lm = map_cache.lm;
     const auto &sm = map_cache.sm;
-    if( sm[p.x][p.y] >= LIGHT_SOURCE_BRIGHT ) {
+    if( sm[p.x()][p.y()] >= LIGHT_SOURCE_BRIGHT ) {
         return lit_level::BRIGHT;
     }
 
-    const float max_light = lm[p.x][p.y].max();
+    const float max_light = lm[p.x()][p.y()].max();
     if( max_light >= LIGHT_AMBIENT_LIT ) {
         return lit_level::LIT;
     }

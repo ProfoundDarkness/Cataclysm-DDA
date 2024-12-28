@@ -226,6 +226,7 @@ static const vitamin_id vitamin_human_flesh_vitamin( "human_flesh_vitamin" );
 
 // vitamin flags
 static const std::string flag_NO_DISPLAY( "NO_DISPLAY" );
+static const std::string flag_NO_SELL( "NO_SELL" );
 
 // fault flags
 static const std::string flag_BLACKPOWDER_FOULING_DAMAGE( "BLACKPOWDER_FOULING_DAMAGE" );
@@ -955,7 +956,7 @@ bool item::is_frozen_liquid() const
     return made_of( phase_id::SOLID ) && made_of_from_type( phase_id::LIQUID );
 }
 
-bool item::covers( const sub_bodypart_id &bp ) const
+bool item::covers( const sub_bodypart_id &bp, bool check_ablative_armor ) const
 {
     // if the item has no armor data it doesn't cover that part
     const islot_armor *armor = find_armor_data();
@@ -982,18 +983,18 @@ bool item::covers( const sub_bodypart_id &bp ) const
 
     iterate_covered_sub_body_parts_internal( get_side(), [&]( const sub_bodypart_str_id & covered ) {
         does_cover = does_cover || bp == covered;
-    } );
+    }, check_ablative_armor );
 
     return does_cover || subpart_cover;
 }
 
-bool item::covers( const bodypart_id &bp ) const
+bool item::covers( const bodypart_id &bp, bool check_ablative_armor ) const
 {
     bool does_cover = false;
     bool subpart_cover = false;
     iterate_covered_body_parts_internal( get_side(), [&]( const bodypart_str_id & covered ) {
         does_cover = does_cover || bp == covered;
-    } );
+    }, check_ablative_armor );
 
     return does_cover || subpart_cover;
 }
@@ -1111,12 +1112,14 @@ static void iterate_helper_sbp( const item *i, const side s,
 }
 
 void item::iterate_covered_sub_body_parts_internal( const side s,
-        const std::function<void( const sub_bodypart_str_id & )> &cb ) const
+        const std::function<void( const sub_bodypart_str_id & )> &cb,
+        bool check_ablative_armor ) const
+
 {
     iterate_helper_sbp( this, s, cb );
 
     //check for ablative armor too
-    if( is_ablative() ) {
+    if( check_ablative_armor && is_ablative() ) {
         for( const item_pocket *pocket : get_all_ablative_pockets() ) {
             if( !pocket->empty() ) {
                 // get the contained plate
@@ -1159,12 +1162,13 @@ static void iterate_helper( const item *i, const side s,
 }
 
 void item::iterate_covered_body_parts_internal( const side s,
-        const std::function<void( const bodypart_str_id & )> &cb ) const
+        const std::function<void( const bodypart_str_id & )> &cb,
+        bool check_ablative_armor ) const
 {
     iterate_helper( this, s, cb );
 
     //check for ablative armor too
-    if( is_ablative() ) {
+    if( check_ablative_armor && is_ablative() ) {
         for( const item_pocket *pocket : get_all_ablative_pockets() ) {
             if( !pocket->empty() ) {
                 // get the contained plate
@@ -5658,6 +5662,27 @@ void item::melee_combat_info( std::vector<iteminfo> &info, const iteminfo_query 
     }
 }
 
+std::vector<std::pair<const item *, int>> get_item_duplicate_counts(
+        const std::list<const item *> &items )
+{
+    std::vector<std::pair<item const *, int>> counted_items;
+    for( const item *contents_item : items ) {
+        bool found = false;
+        for( std::pair<const item *, int> &content : counted_items ) {
+            if( content.first->display_stacked_with( *contents_item ) ) {
+                content.second += 1;
+                found = true;
+            }
+        }
+        if( !found ) {
+            std::pair<const item *, int> new_content( contents_item, 1 );
+            counted_items.push_back( new_content );
+        }
+    }
+    return counted_items;
+}
+
+
 void item::contents_info( std::vector<iteminfo> &info, const iteminfo_query *parts, int batch,
                           bool /*debug*/ ) const
 {
@@ -5683,8 +5708,14 @@ void item::contents_info( std::vector<iteminfo> &info, const iteminfo_query *par
         info.emplace_back( "DESCRIPTION", mod_str );
         info.emplace_back( "DESCRIPTION", mod->type->description.translated() );
     }
+
+    const std::list<const item *> all_contents = contents.all_items_top();
+    const std::vector<std::pair<item const *, int>> counted_contents = get_item_duplicate_counts(
+                all_contents );
     bool contents_header = false;
-    for( const item *contents_item : contents.all_items_top() ) {
+    for( const std::pair<const item *, int> &content_w_count : counted_contents ) {
+        const item *contents_item = content_w_count.first;
+        int count = content_w_count.second;
         if( !contents_header ) {
             insert_separation_line( info );
             info.emplace_back( "DESCRIPTION", _( "<bold>Contents of this item</bold>:" ) );
@@ -5698,12 +5729,16 @@ void item::contents_info( std::vector<iteminfo> &info, const iteminfo_query *par
 
         if( contents_item->made_of_from_type( phase_id::LIQUID ) ) {
             units::volume contents_volume = contents_item->volume() * batch;
-            info.emplace_back( "DESCRIPTION", colorize( contents_item->display_name(),
-                               contents_item->color_in_inventory() ) );
+            info.emplace_back( "DESCRIPTION",
+                               colorize( contents_item->display_name(), contents_item->color_in_inventory() ) );
             info.emplace_back( vol_to_info( "CONTAINER", description + space, contents_volume ) );
         } else {
-            info.emplace_back( "DESCRIPTION", colorize( contents_item->display_name(),
-                               contents_item->color_in_inventory() ) );
+            std::string name;
+            if( count > 1 ) {
+                name += std::to_string( count ) + " ";
+            }
+            name += colorize( contents_item->display_name( count ), contents_item->color_in_inventory() );
+            info.emplace_back( "DESCRIPTION", name );
             info.emplace_back( "DESCRIPTION", description.translated() );
         }
     }
@@ -7136,6 +7171,15 @@ int item::price_no_contents( bool practical, std::optional<int> price_override )
         price *= fault->price_mod();
     }
 
+    if( is_food() && get_comestible() ) {
+        const nutrients &nutrients_value = default_character_compute_effective_nutrients( *this );
+        for( const std::pair<const vitamin_id, int> &vit_pair : nutrients_value.vitamins() ) {
+            if( vit_pair.second > 0 && vit_pair.first->has_flag( flag_NO_SELL ) ) {
+                price = 0.0;
+            }
+        }
+    }
+
     return price;
 }
 
@@ -8411,36 +8455,75 @@ int item::get_avg_coverage( const cover_type &type ) const
 
 int item::get_coverage( const bodypart_id &bodypart, const cover_type &type ) const
 {
+    int coverage = 0;
     if( const armor_portion_data *portion_data = portion_for_bodypart( bodypart ) ) {
         switch( type ) {
-            case cover_type::COVER_DEFAULT:
-                return portion_data->coverage;
-            case cover_type::COVER_MELEE:
-                return portion_data->cover_melee;
-            case cover_type::COVER_RANGED:
-                return portion_data->cover_ranged;
-            case cover_type::COVER_VITALS:
-                return portion_data->cover_vitals;
+            case cover_type::COVER_DEFAULT: {
+                coverage = portion_data->coverage;
+                break;
+            }
+            case cover_type::COVER_MELEE: {
+                coverage = portion_data->cover_melee;
+                break;
+            }
+            case cover_type::COVER_RANGED: {
+                coverage = portion_data->cover_ranged;
+                break;
+            }
+            case cover_type::COVER_VITALS: {
+                coverage = portion_data->cover_vitals;
+                break;
+            }
         }
     }
-    return 0;
+    if( is_ablative() ) {
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                //Rationale for this kind of aggregation is that ablative armor
+                //can't be bigger than an armor that contains it. But it may cover
+                //new body parts, e.g. face shield attached to hard hat.
+                coverage = std::max( coverage, ablative_armor.get_coverage( bodypart ) );
+            }
+        }
+    }
+    return coverage;
 }
 
 int item::get_coverage( const sub_bodypart_id &bodypart, const cover_type &type ) const
 {
+    int coverage = 0;
     if( const armor_portion_data *portion_data = portion_for_bodypart( bodypart ) ) {
         switch( type ) {
-            case cover_type::COVER_DEFAULT:
-                return portion_data->coverage;
-            case cover_type::COVER_MELEE:
-                return portion_data->cover_melee;
-            case cover_type::COVER_RANGED:
-                return portion_data->cover_ranged;
-            case cover_type::COVER_VITALS:
-                return portion_data->cover_vitals;
+            case cover_type::COVER_DEFAULT: {
+                coverage = portion_data->coverage;
+                break;
+            }
+            case cover_type::COVER_MELEE: {
+                coverage = portion_data->cover_melee;
+                break;
+            }
+            case cover_type::COVER_RANGED: {
+                coverage = portion_data->cover_ranged;
+                break;
+            }
+            case cover_type::COVER_VITALS: {
+                coverage = portion_data->cover_vitals;
+                break;
+            }
         }
     }
-    return 0;
+    if( is_ablative() ) {
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                coverage = std::max( coverage, ablative_armor.get_coverage( bodypart ) );
+            }
+        }
+    }
+    return coverage;
 }
 
 bool item::has_sublocations() const
@@ -8501,6 +8584,7 @@ float item::get_thickness( const bodypart_id &bp ) const
     if( t == nullptr ) {
         return is_pet_armor() ? type->pet_armor->thickness : 0.0f;
     }
+    float avg_thickness = 0.0f;
 
     for( const armor_portion_data &data : t->data ) {
         if( !data.covers.has_value() ) {
@@ -8508,12 +8592,33 @@ float item::get_thickness( const bodypart_id &bp ) const
         }
         for( const bodypart_str_id &bpid : data.covers.value() ) {
             if( bp == bpid ) {
-                return data.avg_thickness;
+                avg_thickness = data.avg_thickness;
+                break;
             }
         }
+        if( avg_thickness > 0.0f ) {
+            break;
+        }
     }
-    // body part not covered by this armour
-    return 0.0f;
+    if( is_ablative() ) {
+        int ablatives = 0;
+        float ablative_thickness = 0.0;
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                float tmp_thickness = ablative_armor.get_thickness( bp );
+                if( tmp_thickness > 0.0f ) {
+                    ablative_thickness += tmp_thickness;
+                    ablatives += 1;
+                }
+            }
+        }
+        if( ablatives ) {
+            avg_thickness += ablative_thickness / ablatives;
+        }
+    }
+    return avg_thickness;
 }
 
 float item::get_thickness( const sub_bodypart_id &bp ) const
@@ -8538,7 +8643,8 @@ int item::get_warmth( const bodypart_id &bp ) const
 {
     double warmth_val = 0.0;
     float limb_coverage = 0.0f;
-    if( !covers( bp ) ) {
+    bool check_ablative_armor = false;
+    if( !covers( bp, check_ablative_armor ) ) {
         return 0;
     }
     warmth_val = get_warmth();
@@ -8551,7 +8657,7 @@ int item::get_warmth( const bodypart_id &bp ) const
         limb_coverage = 100;
     } else {
         for( const sub_bodypart_str_id &sbp : bp->sub_parts ) {
-            if( !covers( sbp ) ) {
+            if( !covers( sbp, check_ablative_armor ) ) {
                 continue;
             }
 
@@ -8559,7 +8665,19 @@ int item::get_warmth( const bodypart_id &bp ) const
             limb_coverage += sbp->max_coverage;
         }
     }
-    return std::round( warmth_val * limb_coverage / 100.0f );
+    int warmth = std::round( warmth_val * limb_coverage / 100.0f );
+
+    if( is_ablative() ) {
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                warmth += ablative_armor.get_warmth( bp );
+            }
+        }
+    }
+
+    return warmth;
 }
 
 units::volume item::get_pet_armor_max_vol() const
@@ -8927,6 +9045,19 @@ int item::breathability( const bodypart_id &bp ) const
     }
     const armor_portion_data *a = portion_for_bodypart( bp );
     if( a == nullptr ) {
+        //This body part might still be covered by attachments of this armor (for example face shield).
+        //Check their breathability.
+        if( is_ablative() ) {
+            for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+                if( !pocket->empty() ) {
+                    // get the contained plate
+                    const item &ablative_armor = pocket->front();
+                    if( ablative_armor.covers( bp ) ) {
+                        return ablative_armor.breathability( bp );
+                    }
+                }
+            }
+        }
         // if it doesn't cover it breathes great
         return 100;
     }
@@ -9289,7 +9420,28 @@ std::vector<const part_material *> item::armor_made_of( const bodypart_id &bp ) 
             for( const part_material &m : d.materials ) {
                 matlist.emplace_back( &m );
             }
-            return matlist;
+            break;
+        }
+        if( !matlist.empty() ) {
+            break;
+        }
+    }
+    if( is_ablative() ) {
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                auto abl_mat = ablative_armor.armor_made_of( bp );
+                //It is not clear how to aggregate armor material from different pockets.
+                //A vest might contain two different plates from different materials.
+                //But only one plate can be hit at one attack (according to Character::ablative_armor_absorb).
+                //So for now return here only material for one plate + base clothing materials.
+                if( !abl_mat.empty() ) {
+                    matlist.insert( std::end( matlist ), std::begin( abl_mat ), std::end( abl_mat ) );
+                    return matlist;
+                }
+
+            }
         }
     }
     return matlist;
@@ -9313,7 +9465,24 @@ std::vector<const part_material *> item::armor_made_of( const sub_bodypart_id &b
             for( const part_material &m : d.materials ) {
                 matlist.emplace_back( &m );
             }
-            return matlist;
+            break;
+        }
+        if( !matlist.empty() ) {
+            break;
+        }
+    }
+    if( is_ablative() ) {
+        for( const item_pocket *pocket : contents.get_all_ablative_pockets() ) {
+            if( !pocket->empty() ) {
+                // get the contained plate
+                const item &ablative_armor = pocket->front();
+                auto abl_mat = ablative_armor.armor_made_of( bp );
+                if( !abl_mat.empty() ) {
+                    matlist.insert( std::end( matlist ), std::begin( abl_mat ), std::end( abl_mat ) );
+                    return matlist;
+                }
+
+            }
         }
     }
     return matlist;
@@ -10089,7 +10258,21 @@ bool item::is_funnel_container( units::volume &bigger_than ) const
 
 bool item::is_emissive() const
 {
-    return light.luminance > 0 || type->light_emission > 0;
+    if( light.luminance > 0 || type->light_emission > 0 ) {
+        return true;
+    }
+
+    for( const item_pocket *pkt : get_all_contained_pockets() ) {
+        if( pkt->transparent() ) {
+            for( const item *it : pkt->all_items_top() ) {
+                if( it->is_emissive() ) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 bool item::is_deployable() const
@@ -12145,6 +12328,18 @@ int item::getlight_emit() const
         return 0;
     }
     if( has_flag( flag_CHARGEDIM ) && is_tool() && !has_flag( flag_USE_UPS ) ) {
+        // check if there's a link and it has a charge rate or charge interval
+        // if so, use its power supply
+        if( has_link_data() && ( link().charge_rate > 0 || link().charge_interval > 0 ) ) {
+            return lumint;
+        }
+
+        // If we somehow got this far without a battery/power,
+        // return an illumination value of 0
+        if( !has_ammo() ) {
+            return 0;
+        }
+
         // Falloff starts at 1/5 total charge and scales linearly from there to 0.
         const ammotype &loaded_ammo = ammo_data()->ammo->type;
         if( ammo_capacity( loaded_ammo ) &&
@@ -12719,7 +12914,7 @@ bool item::detonate( const tripoint_bub_ms &p, std::vector<item> &drops )
                              ? &get_player_character()
                              : nullptr;
     if( type->explosion.power >= 0 ) {
-        explosion_handler::explosion( source, p.raw(), type->explosion );
+        explosion_handler::explosion( source, p, type->explosion );
         return true;
     } else if( type->ammo && ( type->ammo->special_cookoff || type->ammo->cookoff ) ) {
         int charges_remaining = charges;
@@ -12731,7 +12926,7 @@ bool item::detonate( const tripoint_bub_ms &p, std::vector<item> &drops )
         if( type->ammo->cookoff ) {
             // If ammo type can burn, then create an explosion proportional to quantity.
             float power = 3.0f * std::pow( rounds_exploded / 25.0f, 0.25f );
-            explosion_handler::explosion( nullptr, p.raw(), power, 0.0f, false, 0 );
+            explosion_handler::explosion( nullptr, p, power, 0.0f, false, 0 );
         }
         charges_remaining -= rounds_exploded;
         if( charges_remaining > 0 ) {
@@ -12897,7 +13092,7 @@ bool item::process_temperature_rot( float insulation, const tripoint_bub_ms &pos
         return false;
     }
 
-    units::temperature temp = get_weather().get_temperature( pos.raw() );
+    units::temperature temp = get_weather().get_temperature( pos );
 
     switch( flag ) {
         case temperature_flag::NORMAL:
@@ -12943,8 +13138,8 @@ bool item::process_temperature_rot( float insulation, const tripoint_bub_ms &pos
         units::temperature_delta temp_mod;
         // Toilets and vending machines will try to get the heat radiation and convection during mapgen and segfault.
         if( !g->new_game ) {
-            temp_mod = get_heat_radiation( pos.raw() );
-            temp_mod += get_convection_temperature( pos.raw() );
+            temp_mod = get_heat_radiation( pos );
+            temp_mod += get_convection_temperature( pos );
             temp_mod += here.get_temperature_mod( pos );
         } else {
             temp_mod = units::from_kelvin_delta( 0 );
@@ -12964,7 +13159,7 @@ bool item::process_temperature_rot( float insulation, const tripoint_bub_ms &pos
             // Use weather if above ground, use map temp if below
             units::temperature env_temperature;
             if( pos.z() >= 0 && flag != temperature_flag::ROOT_CELLAR ) {
-                env_temperature = wgen.get_weather_temperature( pos.raw(), time, seed );
+                env_temperature = wgen.get_weather_temperature( get_map().getglobal( pos ), time, seed );
             } else {
                 env_temperature = AVERAGE_ANNUAL_TEMPERATURE;
             }
@@ -13269,40 +13464,6 @@ void item::reset_temp_check()
     last_temp_check = calendar::turn;
 }
 
-std::vector<trait_id> item::mutations_from_wearing( const Character &guy, bool removing ) const
-{
-    if( !is_relic() ) {
-        return std::vector<trait_id> {};
-    }
-    std::vector<trait_id> muts;
-
-    for( const enchant_cache &ench : relic_data->get_proc_enchantments() ) {
-        for( const trait_id &mut : ench.get_mutations() ) {
-            // this may not be perfectly accurate due to conditions
-            muts.push_back( mut );
-        }
-    }
-    if( type->relic_data ) {
-        for( const enchantment &ench : type->relic_data->get_defined_enchantments() ) {
-            for( const trait_id &mut : ench.get_mutations() ) {
-                // this may not be perfectly accurate due to conditions
-                muts.push_back( mut );
-            }
-        }
-    }
-    for( const trait_id &char_mut : guy.get_mutations( true, removing ) ) {
-        for( auto iter = muts.begin(); iter != muts.end(); ) {
-            if( char_mut == *iter ) {
-                iter = muts.erase( iter );
-            } else {
-                ++iter;
-            }
-        }
-    }
-
-    return muts;
-}
-
 void item::overwrite_relic( const relic &nrelic )
 {
     this->relic_data = cata::make_value<relic>( nrelic );
@@ -13337,7 +13498,7 @@ bool item::process_corpse( map &here, Character *carrier, const tripoint_bub_ms 
             here.trap_set( pos, trap_id( "tr_dormant_corpse" ) );
         } else if( trap_here->loadid != trap_id( "tr_dormant_corpse" ) ) {
             // if there is a trap, but it isn't the right one, we need to revive the zombie manually.
-            return g->revive_corpse( pos.raw(), *this, 3 );
+            return g->revive_corpse( pos, *this, 3 );
         }
         return false;
     }
@@ -13353,7 +13514,7 @@ bool item::process_corpse( map &here, Character *carrier, const tripoint_bub_ms 
         return false;
     }
     if( rng( 0, volume() / units::legacy_volume_factor ) > burnt &&
-        g->revive_corpse( pos.raw(), *this ) ) {
+        g->revive_corpse( pos, *this ) ) {
         if( carrier == nullptr ) {
             if( corpse->in_species( species_ROBOT ) ) {
                 add_msg_if_player_sees( pos, m_warning, _( "A nearby robot has repaired itself and stands up!" ) );
@@ -13385,7 +13546,7 @@ bool item::process_fake_mill( map &here, Character * /*carrier*/, const tripoint
         return true; //destroy fake mill
     }
     if( age() >= 6_hours || item_counter == 0 ) {
-        iexamine::mill_finalize( get_avatar(), pos.raw() ); //activate effects when timers goes to zero
+        iexamine::mill_finalize( get_avatar(), pos ); //activate effects when timers goes to zero
         return true; //destroy fake mill item
     }
 
@@ -13402,7 +13563,7 @@ bool item::process_fake_smoke( map &here, Character * /*carrier*/, const tripoin
     }
 
     if( age() >= 6_hours || item_counter == 0 ) {
-        iexamine::on_smoke_out( pos.raw(), birthday() ); //activate effects when timers goes to zero
+        iexamine::on_smoke_out( pos, birthday() ); //activate effects when timers goes to zero
         return true; //destroy fake smoke when it 'burns out'
     }
 
@@ -13871,7 +14032,7 @@ bool item::process_link( map &here, Character *carrier, const tripoint_bub_ms &p
     // Handle links to items in the inventory.
     if( link().source == link_state::solarpack ) {
         if( carrier == nullptr || !carrier->worn_with_flag( flag_SOLARPACK_ON ) ) {
-            add_msg_if_player_sees( pos.raw(), m_bad, _( "The %s has come loose from the solar pack." ),
+            add_msg_if_player_sees( pos, m_bad, _( "The %s has come loose from the solar pack." ),
                                     link_name() );
             reset_link( true, carrier );
             return false;
@@ -13882,7 +14043,7 @@ bool item::process_link( map &here, Character *carrier, const tripoint_bub_ms &p
     };
     if( link().source == link_state::ups ) {
         if( carrier == nullptr || !carrier->cache_has_item_with( flag_IS_UPS, used_ups ) ) {
-            add_msg_if_player_sees( pos.raw(), m_bad, _( "The %s has come loose from the UPS." ), link_name() );
+            add_msg_if_player_sees( pos, m_bad, _( "The %s has come loose from the UPS." ), link_name() );
             reset_link( true, carrier );
             return false;
         }
@@ -13912,7 +14073,7 @@ bool item::process_link( map &here, Character *carrier, const tripoint_bub_ms &p
             if( carrier != nullptr ) {
                 carrier->add_msg_if_player( m_bad, _( "Your %s breaks loose!" ), cable_name );
             } else {
-                add_msg_if_player_sees( pos.raw(), m_bad, _( "Your %s breaks loose!" ), cable_name );
+                add_msg_if_player_sees( pos, m_bad, _( "Your %s breaks loose!" ), cable_name );
             }
             return true;
         } else if( link().length + M_SQRT2 >= link().max_length + 1 && carrier != nullptr ) {
@@ -13992,7 +14153,7 @@ bool item::process_link( map &here, Character *carrier, const tripoint_bub_ms &p
     }
 
     if( link().last_processed <= t_veh->part( link_vp_index ).last_disconnected ) {
-        add_msg_if_player_sees( pos.raw(), m_warning, string_format( _( "You detached the %s." ),
+        add_msg_if_player_sees( pos, m_warning, string_format( _( "You detached the %s." ),
                                 type_name() ) );
         return reset_link( true, carrier, -2 );
     }
@@ -14141,7 +14302,7 @@ bool item::reset_link( bool unspool_if_too_long, Character *p, int vpart_index,
         if( p != nullptr ) {
             p->add_msg_if_player( m_warning, _( "Your %s has come loose." ), link_name() );
         } else {
-            add_msg_if_player_sees( cable_position.raw(), m_warning, _( "The %s has come loose." ),
+            add_msg_if_player_sees( cable_position, m_warning, _( "The %s has come loose." ),
                                     link_name() );
         }
     }

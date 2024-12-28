@@ -124,6 +124,10 @@ static const quality_id qual_WELD( "WELD" );
 
 static const requirement_id requirement_data_mining_standard( "mining_standard" );
 
+static const species_id species_FERAL( "FERAL" );
+static const species_id species_HUMAN( "HUMAN" );
+static const species_id species_ZOMBIE( "ZOMBIE" );
+
 static const ter_str_id ter_t_stump( "t_stump" );
 static const ter_str_id ter_t_trunk( "t_trunk" );
 
@@ -1079,7 +1083,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
                 }
                 item base( vpinfo.base_item );
                 // TODO: fix point types
-                const units::mass max_lift = you.best_nearby_lifting_assist( src_loc.raw() );
+                const units::mass max_lift = you.best_nearby_lifting_assist( src_loc );
                 const bool use_aid = max_lift >= base.weight();
                 const bool use_str = you.can_lift( base );
                 if( !( use_aid || use_str ) ) {
@@ -1125,7 +1129,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
                 const requirement_data &reqs = vpinfo.repair_requirements();
                 // TODO: fix point types
                 const inventory &inv =
-                    you.crafting_inventory( src_loc.raw(), PICKUP_RANGE - 1, false );
+                    you.crafting_inventory( src_loc, PICKUP_RANGE - 1, false );
                 const bool can_make = reqs.can_make_with_inventory( inv, is_crafting_component );
                 you.set_value( "veh_index_type", vpinfo.name() );
                 // temporarily store the intended index, we do this so two NPCs don't try and work on the same part at same time.
@@ -1213,6 +1217,16 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
             }
         }
         if( !corpses.empty() ) {
+            for( item &body : corpses ) {
+                const mtype &corpse = *body.get_mtype();
+                // TODO: Extract this bool into a function
+                const bool is_human = corpse.id == mtype_id::NULL_ID() || ( ( corpse.in_species( species_HUMAN ) ||
+                                      corpse.in_species( species_FERAL ) ) &&
+                                      !corpse.in_species( species_ZOMBIE ) );
+                if( is_human && !you.okay_with_eating_humans() ) {
+                    return activity_reason_info::fail( do_activity_reason::REFUSES_THIS_WORK );
+                }
+            }
             if( big_count > 0 && small_count == 0 ) {
                 if( !b_rack_present ) {
                     return activity_reason_info::fail( do_activity_reason::NO_ZONE );
@@ -1289,7 +1303,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
             nearest_src_loc = route.back();
         }
         // TODO: fix point types
-        const inventory pre_inv = you.crafting_inventory( nearest_src_loc.raw(), PICKUP_RANGE );
+        const inventory pre_inv = you.crafting_inventory( nearest_src_loc, PICKUP_RANGE );
         if( !zones.empty() ) {
             const blueprint_options &options = dynamic_cast<const blueprint_options &>
                                                ( zones.front().get_options() );
@@ -1369,7 +1383,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
         if( p ) {
             item_location to_craft = p->get_item_to_craft();
             if( to_craft && to_craft->is_craft() ) {
-                const inventory &inv = you.crafting_inventory( src_loc.raw(), PICKUP_RANGE, false );
+                const inventory &inv = you.crafting_inventory( src_loc, PICKUP_RANGE, false );
                 const recipe &r = to_craft->get_making();
                 std::vector<std::vector<item_comp>> item_comp_vector =
                                                      to_craft->get_continue_reqs().get_components();
@@ -1388,7 +1402,7 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
     } else if( act == ACT_MULTIPLE_DIS ) {
         // Is there anything to be disassembled?
         // TODO: fix point types
-        const inventory &inv = you.crafting_inventory( src_loc.raw(), PICKUP_RANGE, false );
+        const inventory &inv = you.crafting_inventory( src_loc, PICKUP_RANGE, false );
         requirement_data req;
         for( item &i : here.i_at( src_loc ) ) {
             // Skip items marked by other ppl.
@@ -1500,8 +1514,7 @@ static std::vector<std::tuple<tripoint_bub_ms, itype_id, int>> requirements_map(
         already_there_spots.push_back( elem );
         combined_spots.push_back( elem );
     }
-    // TODO: fix point types
-    for( const tripoint &elem : mgr.get_point_set_loot(
+    for( const tripoint_bub_ms &elem : mgr.get_point_set_loot(
              you.get_location(), distance, you.is_npc(), _fac_id( you ) ) ) {
         // if there is a loot zone that's already near the work spot, we don't want it to be added twice.
         if( std::find( already_there_spots.begin(), already_there_spots.end(),
@@ -2656,7 +2669,7 @@ static std::unordered_set<tripoint_abs_ms> generic_multi_activity_locations(
             }
         }
         // remove tiles in darkness, if we aren't lit-up ourselves
-        if( !dark_capable && you.fine_detail_vision_mod( set_pt.raw() ) > 4.0 ) {
+        if( !dark_capable && you.fine_detail_vision_mod( set_pt ) > 4.0 ) {
             it2 = src_set.erase( it2 );
             continue;
         }
@@ -2736,6 +2749,14 @@ static requirement_check_result generic_multi_activity_check_requirement(
     if( can_do_it ) {
         return requirement_check_result::CAN_DO_LOCATION;
     }
+    if( reason == do_activity_reason::REFUSES_THIS_WORK ) {
+        you.add_msg_if_player( m_info,
+                               _( "There's a human corpse there.  You wouldn't want to butcher it by accident." ) );
+        if( you.is_npc() ) {
+            add_msg_if_player_sees( you, m_info, _( "%s refuses to butcher a human corpse." ),
+                                    you.disp_name() );
+        }
+    }
     if( reason == do_activity_reason::DONT_HAVE_SKILL ||
         reason == do_activity_reason::NO_ZONE ||
         reason == do_activity_reason::ALREADY_DONE ||
@@ -2804,8 +2825,7 @@ static requirement_check_result generic_multi_activity_check_requirement(
         requirement_id what_we_need;
         std::vector<tripoint_bub_ms> loot_zone_spots;
         std::vector<tripoint_bub_ms> combined_spots;
-        // TODO: fix point types
-        for( const tripoint &elem : mgr.get_point_set_loot(
+        for( const tripoint_bub_ms &elem : mgr.get_point_set_loot(
                  abspos, ACTIVITY_SEARCH_DISTANCE, you.is_npc(), _fac_id( you ) ) ) {
             loot_zone_spots.emplace_back( elem );
             combined_spots.emplace_back( elem );
@@ -3092,7 +3112,7 @@ static bool generic_multi_activity_do(
         you.activity.targets.emplace_back( you, &best_rod );
         // TODO: fix point types
         you.activity.coord_set =
-            g->get_fishable_locations( ACTIVITY_SEARCH_DISTANCE, src_loc.raw() );
+            g->get_fishable_locations( ACTIVITY_SEARCH_DISTANCE, src_loc );
         return false;
     } else if( reason == do_activity_reason::NEEDS_MINING ) {
         // if have enough batteries to continue etc.
@@ -3311,7 +3331,7 @@ bool generic_multi_activity_handler( player_activity &act, Character &you, bool 
             activity_to_restore != ACT_MULTIPLE_MOP &&
             activity_to_restore != ACT_MOVE_LOOT &&
             activity_to_restore != ACT_FETCH_REQUIRED &&
-            you.fine_detail_vision_mod( you.pos() ) > 4.0 ) {
+            you.fine_detail_vision_mod( you.pos_bub() ) > 4.0 ) {
             you.add_msg_if_player( m_info, _( "It is too dark to work here." ) );
             return false;
         }

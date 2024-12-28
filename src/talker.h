@@ -129,6 +129,9 @@ class const_talker
         virtual int get_cur_hp( const bodypart_id & ) const {
             return 0;
         }
+        virtual int get_degradation() const {
+            return 0;
+        }
         virtual int get_hp_max( const bodypart_id & ) const {
             return 0;
         }
@@ -321,7 +324,7 @@ class const_talker
         virtual bool can_see() const {
             return false;
         }
-        virtual bool can_see_location( const tripoint & ) const {
+        virtual bool can_see_location( const tripoint_bub_ms & ) const {
             return false;
         }
         virtual bool is_mute() const {
@@ -491,6 +494,9 @@ class const_talker
             return 0;
         }
         virtual int attack_speed() const {
+            return 0;
+        }
+        virtual int get_speed() const {
             return 0;
         }
         virtual dealt_damage_instance deal_damage( Creature *, bodypart_id,
@@ -775,9 +781,11 @@ class talker: virtual public const_talker
         virtual void set_npc_value( int ) {}
         virtual void set_npc_anger( int ) {}
         virtual void set_all_parts_hp_cur( int ) {}
+        virtual void set_degradation( int ) {}
         virtual void die() {}
         virtual void set_mana_cur( int ) {}
         virtual void mod_daily_health( int, int ) {}
+        virtual void mod_livestyle( int ) {}
         virtual void mod_focus( int ) {}
         virtual void set_pkill( int ) {}
         virtual void set_stamina( int ) {}

@@ -194,7 +194,7 @@ class enchantment
 
         bool was_loaded = false;
 
-        const std::set<trait_id> &get_mutations() const {
+        const std::vector<trait_id> &get_mutations() const {
             return mutations;
         }
         double get_value_add( enchant_vals::mod value, const Character &guy ) const;
@@ -213,7 +213,7 @@ class enchantment
         };
         std::vector<bodypart_changes> modified_bodyparts;
 
-        std::set<trait_id> mutations;
+        std::vector<trait_id> mutations;
         std::optional<emit_id> emitter;
         std::map<efftype_id, int> ench_effects;
 
@@ -303,6 +303,8 @@ class enchant_cache : public enchantment
         void force_add( const enchant_cache &rhs );
         void force_add_with_dialogue( const enchantment &rhs, const const_dialogue &d,
                                       bool evaluate = true );
+        // adds enchantment mutations to the cache
+        void force_add_mutation( const enchantment &rhs );
 
         // modifies character stats, or does other passive effects
         void activate_passive( Character &guy ) const;
@@ -326,15 +328,17 @@ class enchant_cache : public enchantment
         // checks if the enchantments have the same active_conditions
         bool stacks_with( const enchantment &rhs ) const;
         // performs cooldown and distance checks before casting enchantment spells
-        void cast_enchantment_spell( Character &caster, const Creature *target,
+        void cast_enchantment_spell( Creature &caster, const Creature *target,
                                      const fake_spell &sp ) const;
         //Clears all the maps and vectors in the cache.
         void clear();
 
         // casts all the hit_you_effects on the target
         void cast_hit_you( Character &caster, const Creature &target ) const;
+        void cast_hit_you( Creature &caster, const Creature &target ) const;
         // casts all the hit_me_effects on self or a target depending on the enchantment definition
         void cast_hit_me( Character &caster, const Creature *target ) const;
+        void cast_hit_me( Creature &caster, const Creature *target ) const;
         void serialize( JsonOut &jsout ) const;
         void add_value_add( enchant_vals::mod value, int add_value );
 
