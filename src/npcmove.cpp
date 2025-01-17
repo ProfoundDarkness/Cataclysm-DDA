@@ -300,8 +300,8 @@ tripoint_bub_ms npc::good_escape_direction( bool include_pos )
         if( retreat_target && *retreat_target != abs_pos ) {
             add_msg_debug( debugmode::DF_NPC_MOVEAI,
                            "<color_light_gray>%s is </color><color_brown>repositioning</color> to %s", name,
-                           here.bub_from_abs( *retreat_target ).to_string_writable() );
-            update_path( here.bub_from_abs( *retreat_target ) );
+                           here.get_bub( *retreat_target ).to_string_writable() );
+            update_path( here.get_bub( *retreat_target ) );
         }
         if( !path.empty() ) {
             return path[0];
@@ -374,7 +374,7 @@ tripoint_bub_ms npc::good_escape_direction( bool include_pos )
             add_msg_debug( debugmode::DF_NPC_MOVEAI,
                            "<color_light_gray>%s thinks </color><color_light_blue>%s</color><color_light_gray> is the best retreat spot they've seen so far</color><color_light_blue> rated %1.2f</color><color_light_gray>after checking %i candidates</color>",
                            name, pt.to_string_writable(), best_rating, num_points_searched );
-            candidates.emplace_back( pos() + displace_XY( pt_dir ) );
+            candidates.emplace_back( pos_bub() + displace_XY( pt_dir ) );
         } else if( cur_rating < best_rating ) {
             if( one_in( 5 ) ) {
                 add_msg_debug( debugmode::DF_NPC_MOVEAI,
@@ -382,7 +382,7 @@ tripoint_bub_ms npc::good_escape_direction( bool include_pos )
                                name, num_points_searched );
             }
             candidates.clear();
-            candidates.emplace_back( pos() + displace_XY( pt_dir ) );
+            candidates.emplace_back( pos_bub() + displace_XY( pt_dir ) );
             best_rating = cur_rating;
         }
         num_points_searched += 1;
@@ -452,7 +452,7 @@ std::vector<sphere> npc::find_dangerous_explosives() const
             continue;   // Consider only imminent dangers.
         }
 
-        result.emplace_back( elem.position(), safe_range );
+        result.emplace_back( elem.pos_bub().raw(), safe_range );
     }
 
     return result;
@@ -1146,7 +1146,9 @@ void npc::act_on_danger_assessment()
                 add_msg_debug( debugmode::DF_NPC_COMBATAI, "%s upgrades reposition to flat out retreat.", name );
                 mem_combat.repositioning = false; // we're not just moving, we're running.
                 warn_about( "run_away", run_away_for );
-                set_attitude( NPCATT_FLEE_TEMP );
+                if( !is_player_ally() ) {
+                    set_attitude( NPCATT_FLEE_TEMP );
+                }
                 if( mem_combat.panic > 5 && is_player_ally() && sees( player_character.pos_bub() ) ) {
                     // consider warning player about panic
                     int panic_alert = rl_dist( pos_bub(), player_character.pos_bub() ) - player_character.get_per();
@@ -1219,9 +1221,9 @@ void npc::regen_ai_cache()
         }
     }
     while( i != std::end( ai_cache.sound_alerts ) ) {
-        if( sees( here.bub_from_abs( tripoint_abs_ms( i->abs_pos ) ) ) ) {
+        if( sees( here.get_bub( tripoint_abs_ms( i->abs_pos ) ) ) ) {
             // if they were responding to a call for guards because of thievery
-            npc *const sound_source = creatures.creature_at<npc>( here.bub_from_abs( tripoint_abs_ms(
+            npc *const sound_source = creatures.creature_at<npc>( here.get_bub( tripoint_abs_ms(
                                           i->abs_pos ) ) );
             if( sound_source ) {
                 if( my_fac == sound_source->my_fac && sound_source->known_stolen_item ) {
@@ -1468,7 +1470,7 @@ void npc::move()
         if( !activity_route.empty() && !has_destination_activity() ) {
             tripoint_bub_ms final_destination;
             if( destination_point ) {
-                final_destination = here.bub_from_abs( *destination_point );
+                final_destination = here.get_bub( *destination_point );
             } else {
                 final_destination = activity_route.back();
             }
@@ -1601,7 +1603,7 @@ void npc::execute_action( npc_action action )
 
         case npc_investigate_sound: {
             tripoint_bub_ms cur_pos = pos_bub();
-            update_path( here.bub_from_abs( tripoint_abs_ms( ai_cache.s_abs_pos ) ) );
+            update_path( here.get_bub( tripoint_abs_ms( ai_cache.s_abs_pos ) ) );
             move_to_next();
             if( pos_bub() == cur_pos ) {
                 ai_cache.stuck += 1;
@@ -1610,7 +1612,7 @@ void npc::execute_action( npc_action action )
         break;
 
         case npc_return_to_guard_pos: {
-            const tripoint_bub_ms local_guard_pos = here.bub_from_abs( *ai_cache.guard_pos );
+            const tripoint_bub_ms local_guard_pos = here.get_bub( *ai_cache.guard_pos );
             update_path( local_guard_pos );
             if( pos_bub() == local_guard_pos || path.empty() ) {
                 move_pause();
@@ -1741,8 +1743,8 @@ void npc::execute_action( npc_action action )
 
         case npc_look_for_player:
             if( saw_player_recently() && last_player_seen_pos &&
-                sees( here.bub_from_abs( *last_player_seen_pos ) ) ) {
-                update_path( here.bub_from_abs( *last_player_seen_pos ) );
+                sees( here.get_bub( *last_player_seen_pos ) ) ) {
+                update_path( here.get_bub( *last_player_seen_pos ) );
                 move_to_next();
             } else {
                 look_for_player( player_character );
@@ -1897,7 +1899,7 @@ void npc::execute_action( npc_action action )
             break;
 
         case npc_goto_to_this_pos: {
-            update_path( get_map().bub_from_abs( *goto_to_this_pos ) );
+            update_path( get_map().get_bub( *goto_to_this_pos ) );
             move_to_next();
 
             if( get_location() == *goto_to_this_pos ) {
@@ -2979,7 +2981,7 @@ void npc::move_to( const tripoint_bub_ms &pt, bool no_bashing, std::set<tripoint
                 if( !activity_route.empty() && !np->has_destination_activity() ) {
                     tripoint_bub_ms final_destination;
                     if( destination_point ) {
-                        final_destination = here.bub_from_abs( *destination_point );
+                        final_destination = here.get_bub( *destination_point );
                     } else {
                         final_destination = activity_route.back();
                     }
@@ -3127,7 +3129,7 @@ void npc::move_to( const tripoint_bub_ms &pt, bool no_bashing, std::set<tripoint
         here.creature_on_trap( *this );
         here.creature_in_field( *this );
 
-        if( will_be_cramped_in_vehicle_tile( here.getglobal( p ) ) ) {
+        if( will_be_cramped_in_vehicle_tile( here.get_abs( p ) ) ) {
             if( !has_effect( effect_cramped_space ) ) {
                 add_msg_if_player_sees( *this, m_warning,
                                         string_format( _( "%s has to really cram their huge body to fit." ), disp_name() ) );
@@ -3292,7 +3294,7 @@ void npc::worker_downtime()
     //  already know of a chair, go there - if there isn't already another creature there.
     //  this is a bit of behind the scene omniscience for the npc, since ideally the npc
     //  should walk to the chair and then change their destination due to the seat being taken.
-    tripoint_bub_ms local_chair_pos = chair_pos ? here.bub_from_abs( *chair_pos ) :
+    tripoint_bub_ms local_chair_pos = chair_pos ? here.get_bub( *chair_pos ) :
                                       tripoint_bub_ms::zero;
     if( chair_pos && !creatures.creature_at( local_chair_pos ) ) {
         if( here.has_flag_furn( ter_furn_flag::TFLAG_CAN_SIT, local_chair_pos ) ) {
@@ -3314,9 +3316,9 @@ void npc::worker_downtime()
             for( const tripoint_bub_ms &elem : here.points_in_radius( pos_bub(), 30 ) ) {
                 if( here.has_flag_furn( ter_furn_flag::TFLAG_CAN_SIT, elem ) && !creatures.creature_at( elem ) &&
                     could_move_onto( elem ) &&
-                    here.point_within_camp( here.getglobal( elem ) ) ) {
+                    here.point_within_camp( here.get_abs( elem ) ) ) {
                     // this one will do
-                    chair_pos = here.getglobal( elem );
+                    chair_pos = here.get_abs( elem );
                     return;
                 }
             }
@@ -3325,7 +3327,7 @@ void npc::worker_downtime()
     // we got here if there are no chairs available.
     // wander back to near the bulletin board of the camp.
     if( wander_pos ) {
-        update_path( here.bub_from_abs( *wander_pos ) );
+        update_path( here.get_bub( *wander_pos ) );
         if( get_location() == *wander_pos || path.empty() ) {
             move_pause();
             path.clear();
@@ -3346,7 +3348,7 @@ void npc::worker_downtime()
         }
         basecamp *temp_camp = *bcp;
         std::vector<tripoint_bub_ms> pts;
-        for( const tripoint_bub_ms &elem : here.points_in_radius( here.bub_from_abs(
+        for( const tripoint_bub_ms &elem : here.points_in_radius( here.get_bub(
                     tripoint_abs_ms( temp_camp->get_bb_pos() ) ), 10 ) ) {
             if( creatures.creature_at( elem ) || !could_move_onto( elem ) ||
                 here.has_flag( ter_furn_flag::TFLAG_DEEP_WATER, elem ) ||
@@ -3356,7 +3358,7 @@ void npc::worker_downtime()
             pts.push_back( elem );
         }
         if( !pts.empty() ) {
-            wander_pos = here.getglobal( random_entry( pts ) );
+            wander_pos = here.get_abs( random_entry( pts ) );
             return;
         }
     }
@@ -3938,7 +3940,7 @@ bool npc::find_corpse_to_pulp()
 
     const item *corpse = nullptr;
     if( pulp_location && square_dist( get_location(), *pulp_location ) <= range ) {
-        corpse = check_tile( here.bub_from_abs( *pulp_location ) );
+        corpse = check_tile( here.get_bub( *pulp_location ) );
     }
 
     // Find the old target to avoid spamming
@@ -3952,7 +3954,7 @@ bool npc::find_corpse_to_pulp()
             corpse = check_tile( location.pos_bub() );
 
             if( corpse != nullptr ) {
-                pulp_location = here.getglobal( location.pos_bub() );
+                pulp_location = here.get_abs( location.pos_bub() );
                 break;
             }
 
@@ -4314,7 +4316,7 @@ void npc::activate_item( item &it )
 {
     const int oldmoves = moves;
     if( it.is_tool() || it.is_food() ) {
-        it.type->invoke( this, it, pos() );
+        it.type->invoke( this, it, pos_bub() );
     }
 
     if( moves == oldmoves ) {
@@ -4353,7 +4355,7 @@ void npc::heal_player( Character &patient )
         return;
     }
     if( !is_hallucination() ) {
-        int charges_used = used.type->invoke( this, used, patient.pos(), "heal" ).value_or( 0 );
+        int charges_used = used.type->invoke( this, used, patient.pos_bub(), "heal" ).value_or( 0 );
         consume_charges( used, charges_used );
     } else {
         pretend_heal( patient, used );
@@ -4424,7 +4426,7 @@ void npc::heal_self()
     add_msg_if_player_sees( *this, _( "%1$s starts applying a %2$s." ), disp_name(), used.tname() );
     warn_about( "heal_self", 1_turns );
 
-    int charges_used = used.type->invoke( this, used, pos(), "heal" ).value_or( 0 );
+    int charges_used = used.type->invoke( this, used, pos_bub(), "heal" ).value_or( 0 );
     if( used.is_medication() && charges_used > 0 ) {
         consume_charges( used, charges_used );
     }
@@ -4828,7 +4830,7 @@ void npc::reach_omt_destination()
         // No point recalculating the path to get home
         move_to_next();
     } else if( guard_pos ) {
-        update_path( here.bub_from_abs( *guard_pos ) );
+        update_path( here.get_bub( *guard_pos ) );
         move_to_next();
     } else {
         guard_pos = get_location();
@@ -4978,7 +4980,7 @@ void npc::go_to_omt_destination()
             return;
         }
     }
-    tripoint_bub_ms sm_tri = here.bub_from_abs( project_to<coords::ms>( omt_path.back() ) );
+    tripoint_bub_ms sm_tri = here.get_bub( project_to<coords::ms>( omt_path.back() ) );
     tripoint_bub_ms centre_sub = sm_tri + point( SEEX, SEEY );
     if( !here.passable( centre_sub ) ) {
         auto candidates = here.points_in_radius( centre_sub, 2 );

@@ -1244,11 +1244,11 @@ void game::chat()
 
             if( npcselect == follower_count ) {
                 for( npc *them : followers ) {
-                    them->goto_to_this_pos = here.getglobal( *p );
+                    them->goto_to_this_pos = here.get_abs( *p );
                 }
                 yell_msg = _( "Everyone move there!" );
             } else {
-                followers[npcselect]->goto_to_this_pos = here.getglobal( *p );
+                followers[npcselect]->goto_to_this_pos = here.get_abs( *p );
                 yell_msg = string_format( _( "Move there, %s!" ), followers[npcselect]->get_name() );
             }
             break;
@@ -1428,7 +1428,7 @@ void npc::handle_sound( const sounds::sound_t spriority, const std::string &desc
                         int heard_volume, const tripoint_bub_ms &spos )
 {
     const map &here = get_map();
-    const tripoint_abs_ms s_abs_pos = here.getglobal( spos );
+    const tripoint_abs_ms s_abs_pos = here.get_abs( spos );
     const tripoint_abs_ms my_abs_pos = get_location();
 
     add_msg_debug( debugmode::DF_NPC,
@@ -3549,98 +3549,102 @@ talk_effect_fun_t::func f_remove_var( const JsonObject &jo, std::string_view mem
 void map_add_item( item &it, tripoint_abs_ms target_pos )
 {
     if( get_map().inbounds( target_pos ) ) {
-        get_map().add_item_or_charges( get_map().bub_from_abs( target_pos ), it );
+        get_map().add_item_or_charges( get_map().get_bub( target_pos ), it );
     } else {
         tinymap target_bay;
         target_bay.load( project_to<coords::omt>( target_pos ), false );
-        target_bay.add_item_or_charges( target_bay.omt_from_abs( target_pos ), it );
+        target_bay.add_item_or_charges( target_bay.get_omt( target_pos ), it );
     }
 }
 
-void receive_item( itype_id &item_name, int count, std::string_view container_name,
-                   const dialogue &d, bool use_item_group, bool suppress_message,
+void receive_item( const itype_id &item_id, int count, const itype_id &container_id,
+                   const dialogue &d, bool suppress_message,
                    const std::vector<std::string> &flags,
                    bool add_talker = true,
                    const tripoint_abs_ms &p = tripoint_abs_ms(), bool force_equip = false )
 {
-    if( use_item_group ) {
-        item_group::ItemList new_items;
-        new_items = item_group::items_from( item_group_id( item_name.c_str() ), calendar::turn );
-        std::string popup_message;
-        for( item &new_item : new_items ) {
-            for( const std::string &flag : flags ) {
-                new_item.set_flag( flag_id( flag ) );
-            }
+    item new_item = item( item_id, calendar::turn );
+    for( const std::string &flag : flags ) {
+        new_item.set_flag( flag_id( flag ) );
+    }
+
+    if( !container_id.is_valid() ) {
+        if( new_item.count_by_charges() ) {
+            new_item.charges = count;
             if( add_talker ) {
                 d.actor( false )->i_add_or_drop( new_item, force_equip );
             } else {
                 map_add_item( new_item, p );
             }
-            if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
-                if( new_item.count() == 1 ) {
-                    //~ %1%s is the NPC name, %2$s is an item
-                    popup_message += string_format( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(),
-                                                    new_item.tname() ) + "\n";
-                } else {
-                    //~ %1%s is the NPC name, %2$d is a number of items, %3$s are items
-                    popup_message += string_format( _( "%1$s gives you %2$d %3$s." ), d.actor( true )->disp_name(),
-                                                    new_item.count(), new_item.tname() ) + "\n";
+        } else {
+            for( int i_cnt = 0; i_cnt < count; i_cnt++ ) {
+                if( !new_item.ammo_default().is_null() ) {
+                    new_item.ammo_set( new_item.ammo_default() );
                 }
-            }
-        }
-        if( !popup_message.empty() ) {
-            popup( popup_message );
-        }
-    } else {
-        item new_item = item( item_name, calendar::turn );
-        for( const std::string &flag : flags ) {
-            new_item.set_flag( flag_id( flag ) );
-        }
-        if( container_name.empty() ) {
-            if( new_item.count_by_charges() ) {
-                new_item.charges = count;
                 if( add_talker ) {
                     d.actor( false )->i_add_or_drop( new_item, force_equip );
                 } else {
                     map_add_item( new_item, p );
                 }
-            } else {
-                for( int i_cnt = 0; i_cnt < count; i_cnt++ ) {
-                    if( !new_item.ammo_default().is_null() ) {
-                        new_item.ammo_set( new_item.ammo_default() );
-                    }
-                    if( add_talker ) {
-                        d.actor( false )->i_add_or_drop( new_item, force_equip );
-                    } else {
-                        map_add_item( new_item, p );
-                    }
-                }
-            }
-            if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
-                if( count == 1 ) {
-                    //~ %1%s is the NPC name, %2$s is an item
-                    popup( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(), new_item.tname() );
-                } else {
-                    //~ %1%s is the NPC name, %2$d is a number of items, %3$s are items
-                    popup( _( "%1$s gives you %2$d %3$s." ), d.actor( true )->disp_name(), count,
-                           new_item.tname() );
-                }
-            }
-        } else {
-            item container( std::string( container_name ), calendar::turn );
-            new_item.charges = count;
-            container.put_in( new_item,
-                              pocket_type::CONTAINER );
-            if( add_talker ) {
-                d.actor( false )->i_add_or_drop( container, force_equip );
-            } else {
-                map_add_item( container, p );
-            }
-            if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
-                //~ %1%s is the NPC name, %2$s is an item
-                popup( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(), container.tname() );
             }
         }
+        if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
+            if( count == 1 ) {
+                //~ %1%s is the NPC name, %2$s is an item
+                popup( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(), new_item.tname() );
+            } else {
+                //~ %1%s is the NPC name, %2$d is a number of items, %3$s are items
+                popup( _( "%1$s gives you %2$d %3$s." ), d.actor( true )->disp_name(), count,
+                       new_item.tname() );
+            }
+        }
+    } else {
+        item container( container_id, calendar::turn );
+        new_item.charges = count;
+        container.put_in( new_item,
+                          pocket_type::CONTAINER );
+        if( add_talker ) {
+            d.actor( false )->i_add_or_drop( container, force_equip );
+        } else {
+            map_add_item( container, p );
+        }
+        if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
+            //~ %1%s is the NPC name, %2$s is an item
+            popup( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(), container.tname() );
+        }
+    }
+}
+
+void receive_item_group( const item_group_id &group_id, const dialogue &d, bool suppress_message,
+                         const std::vector<std::string> &flags, bool add_talker = true,
+                         const tripoint_abs_ms &p = tripoint_abs_ms(), bool force_equip = false )
+{
+    item_group::ItemList new_items;
+    new_items = item_group::items_from( group_id, calendar::turn );
+    std::string popup_message;
+    for( item &new_item : new_items ) {
+        for( const std::string &flag : flags ) {
+            new_item.set_flag( flag_id( flag ) );
+        }
+        if( add_talker ) {
+            d.actor( false )->i_add_or_drop( new_item, force_equip );
+        } else {
+            map_add_item( new_item, p );
+        }
+        if( add_talker && !suppress_message && d.has_beta && !d.actor( true )->disp_name().empty() ) {
+            if( new_item.count() == 1 ) {
+                //~ %1%s is the NPC name, %2$s is an item
+                popup_message += string_format( _( "%1$s gives you a %2$s." ), d.actor( true )->disp_name(),
+                                                new_item.tname() ) + "\n";
+            } else {
+                //~ %1%s is the NPC name, %2$d is a number of items, %3$s are items
+                popup_message += string_format( _( "%1$s gives you %2$d %3$s." ), d.actor( true )->disp_name(),
+                                                new_item.count(), new_item.tname() ) + "\n";
+            }
+        }
+    }
+    if( !popup_message.empty() ) {
+        popup( popup_message );
     }
 }
 
@@ -3680,15 +3684,22 @@ talk_effect_fun_t f_spawn_item( const JsonObject &jo, std::string_view member,
     }
     talk_effect_fun_t ret( [item_name, count, container_name, use_item_group, suppress_message,
                add_talker, loc_var, force_equip, flags]( dialogue & d ) {
-        itype_id iname = itype_id( item_name.evaluate( d ) );
         const tripoint_abs_ms target_location = get_tripoint_from_var( loc_var, d, false );
         std::vector<std::string> flags_str;
         flags_str.reserve( flags.size() );
         for( const str_or_var &flat_sov : flags ) {
             flags_str.emplace_back( flat_sov.evaluate( d ) );
         }
-        receive_item( iname, count.evaluate( d ), container_name.evaluate( d ), d, use_item_group,
-                      suppress_message, flags_str, add_talker, target_location, force_equip );
+        if( use_item_group ) {
+            const item_group_id group_id = item_group_id( item_name.evaluate( d ) );
+            receive_item_group( group_id, d, suppress_message, flags_str, add_talker, target_location,
+                                force_equip );
+        } else {
+            const itype_id item_id = itype_id( item_name.evaluate( d ) );
+            const itype_id container_id = itype_id( container_name.evaluate( d ) );
+            receive_item( item_id, count.evaluate( d ), container_id, d, suppress_message,
+                          flags_str, add_talker, target_location, force_equip );
+        }
     } );
     ret.get_likely_rewards().emplace_back( count, item_name );
     return ret;
@@ -3727,14 +3738,20 @@ talk_effect_fun_t::func f_u_buy_item( const JsonObject &jo, std::string_view mem
             run_eoc_vector( false_eocs, d );
             return;
         }
-        itype_id iname = itype_id( item_name.evaluate( d ) );
         std::vector<std::string> flags_str;
         flags_str.reserve( flags.size() );
         for( const str_or_var &flat_sov : flags ) {
             flags_str.emplace_back( flat_sov.evaluate( d ) );
         }
-        receive_item( iname, count.evaluate( d ),
-                      container_name.evaluate( d ), d, use_item_group, suppress_message, flags_str );
+        if( use_item_group ) {
+            const item_group_id group_id = item_group_id( item_name.evaluate( d ) );
+            receive_item_group( group_id, d, suppress_message, flags_str );
+        } else {
+            const itype_id item_id = itype_id( item_name.evaluate( d ) );
+            const itype_id container_id = itype_id( container_name.evaluate( d ) );
+            receive_item( item_id, count.evaluate( d ), container_id, d, suppress_message,
+                          flags_str );
+        }
         run_eoc_vector( true_eocs, d );
     };
 }
@@ -4116,7 +4133,7 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
                             is_npc, type, dov_x_adjust, dov_y_adjust, dov_z_adjust, z_override, true_eocs, false_eocs,
                     search_target, search_type, dov_target_min_radius, dov_target_max_radius]( dialogue & d ) {
         talker *target = d.actor( is_npc );
-        tripoint_abs_ms talker_pos = get_map().getglobal( target->pos_bub() );
+        tripoint_abs_ms talker_pos = get_map().get_abs( target->pos_bub() );
         tripoint_abs_ms target_pos = talker_pos;
         if( target_params.has_value() ) {
             const tripoint_abs_omt omt_pos = mission_util::get_om_terrain_pos( target_params.value(), d );
@@ -4139,15 +4156,15 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
             int min_target_dist = dov_target_min_radius.evaluate( d );
             std::string cur_search_target = search_target.value().evaluate( d );
             bool found = false;
-            tripoint_range<tripoint_bub_ms> points = here.points_in_radius( here.bub_from_abs( abs_ms ),
+            tripoint_range<tripoint_bub_ms> points = here.points_in_radius( here.get_bub( abs_ms ),
                     size_t( dov_target_max_radius.evaluate( d ) ), size_t( 0 ) );
             for( const tripoint_bub_ms &search_loc : points ) {
-                if( rl_dist( here.bub_from_abs( talker_pos ), search_loc ) <= min_target_dist ) {
+                if( rl_dist( here.get_bub( talker_pos ), search_loc ) <= min_target_dist ) {
                     continue;
                 }
                 if( search_type.value() == "terrain" ) {
                     if( here.ter( search_loc ).id().c_str() == cur_search_target ) {
-                        target_pos = here.getglobal( search_loc );
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         break;
                     }
@@ -4155,14 +4172,14 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
                     const furn_str_id &fi = here.furn( search_loc ).id();
                     if( fi.c_str() == cur_search_target ||
                         ( !fi.is_null() && cur_search_target.empty() ) ) {
-                        target_pos = here.getglobal( search_loc );
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         break;
                     }
                 } else if( search_type.value() == "field" ) {
                     field &fields_here = get_map().field_at( search_loc );
                     if( fields_here.find_field( field_type_id( cur_search_target ) ) || cur_search_target.empty() ) {
-                        target_pos = here.getglobal( search_loc );
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         break;
                     }
@@ -4171,16 +4188,16 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
                     if( tr.id.c_str() == cur_search_target ||
                         ( !tr.is_null() &&
                           cur_search_target.empty() ) ) {
-                        target_pos = here.getglobal( search_loc );
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         break;
                     }
                 } else if( search_type.value() == "monster" ) {
-                    Creature *tmp_critter = get_creature_tracker().creature_at( here.getglobal( search_loc ) );
+                    Creature *tmp_critter = get_creature_tracker().creature_at( here.get_abs( search_loc ) );
                     if( tmp_critter != nullptr && tmp_critter->is_monster() &&
                         ( tmp_critter->as_monster()->type->id.c_str() == cur_search_target ||
                           cur_search_target.empty() ) ) {
-                        target_pos = here.getglobal( search_loc );
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         g->despawn_nonlocal_monsters();
                         break;
@@ -4190,15 +4207,15 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
                             1 ) ) {
                         if( person->pos_bub() == search_loc && ( person->myclass.c_str() == cur_search_target ||
                                 cur_search_target.empty() ) ) {
-                            target_pos = here.getglobal( search_loc );
+                            target_pos = here.get_abs( search_loc );
                             found = true;
                             break;
                         }
                     }
                 } else if( search_type.value() == "zone" ) {
                     zone_manager &mgr = zone_manager::get_manager();
-                    if( mgr.get_zone_at( here.getglobal( search_loc ), zone_type_id( cur_search_target ) ) ) {
-                        target_pos = here.getglobal( search_loc );
+                    if( mgr.get_zone_at( here.get_abs( search_loc ), zone_type_id( cur_search_target ) ) ) {
+                        target_pos = here.get_abs( search_loc );
                         found = true;
                         break;
                     }
@@ -4222,8 +4239,8 @@ talk_effect_fun_t::func f_location_variable( const JsonObject &jo, std::string_v
                 target_pos = talker_pos + tripoint_rel_ms( rng( -max_radius, max_radius ), rng( -max_radius,
                              max_radius ),
                              0 );
-                if( ( !outdoor_only || here.is_outside( here.bub_from_abs( target_pos ) ) ) &&
-                    ( !passable_only || here.passable( here.bub_from_abs( target_pos ) ) ) &&
+                if( ( !outdoor_only || here.is_outside( here.get_bub( target_pos ) ) ) &&
+                    ( !passable_only || here.passable( here.get_bub( target_pos ) ) ) &&
                     rl_dist( target_pos, talker_pos ) >= min_radius ) {
                     found = true;
                     break;
@@ -5128,7 +5145,7 @@ talk_effect_fun_t::func f_cast_spell( const JsonObject &jo, std::string_view mem
                 }
             } else {
                 const tripoint_bub_ms target_pos = loc_var ?
-                                                   get_map().bub_from_abs( get_tripoint_from_var( loc_var, d, is_npc ) ) : caster->pos_bub();
+                                                   get_map().get_bub( get_tripoint_from_var( loc_var, d, is_npc ) ) : caster->pos_bub();
                 sp.cast_all_effects( *caster, target_pos );
                 caster->add_msg_player_or_npc( fake.trigger_message, fake.npc_trigger_message );
             }
@@ -5470,7 +5487,7 @@ talk_effect_fun_t::func f_activate( const JsonObject &jo, std::string_view membe
                 if( target_var.has_value() ) {
                     tripoint_abs_ms target_pos = get_tripoint_from_var( target_var, d, is_npc );
                     if( get_map().inbounds( target_pos ) ) {
-                        guy->invoke_item( it->get_item(), method_str, get_map().bub_from_abs( target_pos ) );
+                        guy->invoke_item( it->get_item(), method_str, get_map().get_bub( target_pos ) );
                         return;
                     }
                 }
@@ -5583,7 +5600,7 @@ talk_effect_fun_t::func f_make_sound( const JsonObject &jo, std::string_view mem
         } else {
             translated_message = message.evaluate( d );
         }
-        sounds::sound( get_map().bub_from_abs( target_pos ), volume.evaluate( d ), type, translated_message,
+        sounds::sound( get_map().get_bub( target_pos ), volume.evaluate( d ), type, translated_message,
                        ambient );
     };
 }
@@ -6097,7 +6114,7 @@ talk_effect_fun_t::func f_map_run_item_eocs( const JsonObject &jo, std::string_v
         tripoint_abs_ms target_location = get_tripoint_from_var( loc_var, d, is_npc );
         std::vector<item_location> items;
         map &here = get_map();
-        tripoint_bub_ms center = here.bub_from_abs( target_location );
+        tripoint_bub_ms center = here.get_bub( target_location );
         int max_radius = dov_max_radius.evaluate( d );
         int min_radius = dov_min_radius.evaluate( d );
         for( const tripoint_bub_ms &pos : here.points_in_radius( center, max_radius ) ) {
@@ -6118,7 +6135,7 @@ talk_effect_fun_t::func f_map_run_item_eocs( const JsonObject &jo, std::string_v
             inv_s.clear_items();
             for( const tripoint_bub_ms &pos : get_map().points_in_radius( center, max_radius ) ) {
                 if( rl_dist( center, pos ) >= min_radius ) {
-                    inv_s.add_map_items( pos.raw() );
+                    inv_s.add_map_items( pos );
                 }
             }
             if( inv_s.empty() ) {
@@ -6136,7 +6153,7 @@ talk_effect_fun_t::func f_map_run_item_eocs( const JsonObject &jo, std::string_v
             inv_s.clear_items();
             for( const tripoint_bub_ms &pos : get_map().points_in_radius( center, max_radius ) ) {
                 if( rl_dist( center, pos ) >= min_radius ) {
-                    inv_s.add_map_items( pos.raw() );
+                    inv_s.add_map_items( pos );
                 }
             }
             if( inv_s.empty() ) {
@@ -6579,7 +6596,7 @@ talk_effect_fun_t::func f_deal_damage( const JsonObject &jo, std::string_view me
         }
 
         if( d.actor( is_npc )->get_monster() ) {
-            bp = bodypart_id( "bp_null" );
+            bp = bodypart_str_id::NULL_ID();
         }
 
         dmg_inst.add_damage( damage_type, dmg_amount.evaluate( d ), arpen.evaluate( d ),
@@ -6690,7 +6707,7 @@ talk_effect_fun_t::func f_spawn_monster( const JsonObject &jo, std::string_view 
         std::optional<time_duration> lifespan;
         tripoint_bub_ms target_pos = d.actor( is_npc )->pos_bub();
         if( target_var.has_value() ) {
-            target_pos = get_map().bub_from_abs( get_tripoint_from_var( target_var, d, is_npc ) );
+            target_pos = get_map().get_bub( get_tripoint_from_var( target_var, d, is_npc ) );
         }
         int visible_spawns = 0;
         int spawns = 0;
@@ -6825,7 +6842,7 @@ talk_effect_fun_t::func f_spawn_npc( const JsonObject &jo, std::string_view memb
         std::optional<time_duration> lifespan;
         tripoint_bub_ms target_pos = d.actor( is_npc )->pos_bub();
         if( target_var.has_value() ) {
-            target_pos = get_map().bub_from_abs( get_tripoint_from_var( target_var, d, is_npc ) );
+            target_pos = get_map().get_bub( get_tripoint_from_var( target_var, d, is_npc ) );
         }
         int visible_spawns = 0;
         int spawns = 0;
@@ -6907,7 +6924,7 @@ talk_effect_fun_t::func f_field( const JsonObject &jo, std::string_view member,
         if( target_var.has_value() ) {
             target_pos = get_tripoint_from_var( target_var, d, is_npc );
         }
-        for( const tripoint_bub_ms &dest : get_map().points_in_radius( get_map().bub_from_abs( target_pos ),
+        for( const tripoint_bub_ms &dest : get_map().points_in_radius( get_map().get_bub( target_pos ),
                 radius ) ) {
             if( ( !outdoor_only || get_map().is_outside( dest ) ) && ( !indoor_only ||
                     !get_map().is_outside( dest ) ) ) {
@@ -6934,7 +6951,7 @@ talk_effect_fun_t::func f_emit( const JsonObject &jo, std::string_view member,
         if( target_var.has_value() ) {
             target_pos = get_tripoint_from_var( target_var, d, is_npc );
         }
-        tripoint_bub_ms target = get_map().bub_from_abs( target_pos );
+        tripoint_bub_ms target = get_map().get_bub( target_pos );
         get_map().emit_field( target, emit_id( emit.evaluate( d ) ), chance_mult.evaluate( d ) );
     };
 }
@@ -7024,12 +7041,14 @@ talk_effect_fun_t::func f_teleport( const JsonObject &jo, std::string_view membe
         success_message.str_val = translation();
     }
     bool force = jo.get_bool( "force", false );
-    return [is_npc, target_var, fail_message, success_message, force]( dialogue const & d ) {
+    bool force_safe = jo.get_bool( "force_safe", false );
+    return [is_npc, target_var, fail_message, success_message, force,
+            force_safe]( dialogue const & d ) {
         tripoint_abs_ms target_pos = get_tripoint_from_var( target_var, d, is_npc );
         Creature *teleporter = d.actor( is_npc )->get_creature();
         if( teleporter ) {
-            if( teleport::teleport_to_point( *teleporter, get_map().bub_from_abs( target_pos ), true, false,
-                                             false, force ) ) {
+            if( teleport::teleport_to_point( *teleporter, get_map().get_bub( target_pos ), true, false,
+                                             false, force, force_safe ) ) {
                 teleporter->add_msg_if_player( success_message.evaluate( d ) );
             } else {
                 teleporter->add_msg_if_player( fail_message.evaluate( d ) );
