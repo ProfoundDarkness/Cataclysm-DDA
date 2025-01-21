@@ -74,6 +74,8 @@
 #include "weather.h"
 #include "weather_type.h"
 #include "worldfactory.h"
+#include "bodygraph.h"
+#include "diary.h"
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
@@ -241,8 +243,20 @@ void handle_key_blocking_activity()
             }
         } else if( action == "player_data" ) {
             u.disp_info( true );
+        } else if( action == "missions" ) {
+            g->list_missions();
+        } else if( action == "factions" ) {
+            g->faction_manager_ptr->display();
+        } else if( action == "morale" ) {
+            u.disp_morale();
+        } else if( action == "medical" ) {
+            u.disp_medical();
+        } else if( action == "bodystatus" ) {
+            display_bodygraph( get_player_character() );
         } else if( action == "messages" ) {
             Messages::display_messages();
+        } else if( action == "diary" ) {
+            diary::show_diary_ui( u.get_avatar_diary() );
         } else if( action == "help" ) {
             get_help().display_help();
         } else if( action != "HELP_KEYBINDINGS" ) {
