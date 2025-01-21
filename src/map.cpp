@@ -646,7 +646,7 @@ void map::vehmove()
     VehicleList vehicle_list;
     int minz = zlevels ? -OVERMAP_DEPTH : abs_sub.z();
     int maxz = zlevels ? OVERMAP_HEIGHT : abs_sub.z();
-    const tripoint_abs_ms player_pos = get_player_character().get_location();
+    const tripoint_abs_ms player_pos = get_player_character().pos_abs();
     for( int zlev = minz; zlev <= maxz; ++zlev ) {
         level_cache *cache_lazy = get_cache_lazy( zlev );
         if( !cache_lazy ) {
@@ -4409,7 +4409,8 @@ void map::shoot( const tripoint_bub_ms &p, projectile &proj, const bool hit_item
 {
     // TODO: make bashing better a destroying, worse at penetrating
     std::map<damage_type_id, float> dmg_by_type {};
-    for( const damage_unit &dam : proj.impact ) {
+    damage_instance &impact = proj.multishot ? proj.shot_impact : proj.impact;
+    for( const damage_unit &dam : impact ) {
         dmg_by_type[dam.type] +=
             dam.amount * dam.damage_multiplier * dam.unconditional_damage_mult +
             dam.res_pen * dam.res_mult * dam.unconditional_res_mult;
@@ -4469,7 +4470,8 @@ void map::shoot( const tripoint_bub_ms &p, projectile &proj, const bool hit_item
             }
             // only very flammable furn/ter can be set alight with incendiary rounds
             if( data.has_flag( ter_furn_flag::TFLAG_FLAMMABLE_ASH ) ) {
-                if( incendiary && x_in_y( 1, 10 ) ) { // 10% chance
+                if( incendiary && x_in_y( initial_damage, 100 ) ) {
+                    // 1% chance for 1 damage
                     add_field( p, fd_fire, 1 );
                 }
                 if( ignite ) {
@@ -4532,10 +4534,10 @@ void map::shoot( const tripoint_bub_ms &p, projectile &proj, const bool hit_item
 
     // Rescale the damage
     if( dam <= 0 ) {
-        proj.impact.damage_units.clear();
+        impact.clear();
         return;
     } else if( dam < initial_damage ) {
-        proj.impact.mult_damage( dam / static_cast<double>( initial_damage ) );
+        impact.mult_damage( dam / static_cast<double>( initial_damage ) );
     }
 
     // for now, shooting furniture or terrain protects any items
@@ -9504,7 +9506,7 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
                                    mcache.end(), std::inserter( diff, diff.end() ) );
     camera_cache_dirty |= !diff.empty();
     // Initial value is illegal player position.
-    const tripoint_abs_ms p = get_player_character().get_location();
+    const tripoint_abs_ms p = get_player_character().pos_abs();
     int const sr = u.unimpaired_range();
     static tripoint_abs_ms player_prev_pos;
     static int player_prev_range( 0 );

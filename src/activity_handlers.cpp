@@ -2882,7 +2882,7 @@ void activity_handlers::travel_do_turn( player_activity *act, Character *you )
         } else {
             // otherwise target the middle of the edge nearest to our current location
             const tripoint_abs_ms cur_omt_mid = midpoint( project_bounds<coords::ms>
-                                                ( you->global_omt_location() ) );
+                                                ( you->pos_abs_omt() ) );
             waypoint = clamp( cur_omt_mid, project_bounds<coords::ms>( next_omt ) );
         }
         map &here = get_map();
@@ -3541,7 +3541,7 @@ static void perform_zone_activity_turn(
 {
     const zone_manager &mgr = zone_manager::get_manager();
     map &here = get_map();
-    const tripoint_abs_ms abspos = you->get_location();
+    const tripoint_abs_ms abspos = you->pos_abs();
     std::unordered_set<tripoint_abs_ms> unsorted_tiles = mgr.get_near( ztype, abspos );
 
     cleanup_tiles( unsorted_tiles, tile_filter );
@@ -3740,7 +3740,7 @@ void activity_handlers::tree_communion_do_turn( player_activity *act, Character 
     // Breadth-first search forest tiles until one reveals new overmap tiles.
     std::queue<tripoint_abs_omt> q;
     std::unordered_set<tripoint_abs_omt> seen;
-    tripoint_abs_omt loc = you->global_omt_location();
+    tripoint_abs_omt loc = you->pos_abs_omt();
     q.push( loc );
     seen.insert( loc );
     const std::function<bool( const oter_id & )> filter = []( const oter_id & ter ) {
@@ -3826,7 +3826,7 @@ void activity_handlers::spellcasting_finish( player_activity *act, Character *yo
                                             spell_being_cast.xp() );
                 }
                 if( act->get_value( 2 ) != 0 ) {
-                    spell_being_cast.consume_spell_cost( *you );
+                    spell_being_cast.consume_spell_cost( *you, false );
                 }
                 dialogue d( get_talker_for( you ), nullptr );
                 std::vector<effect_on_condition_id> failure_eocs = spell_being_cast.get_failure_eoc_ids();
@@ -3855,7 +3855,7 @@ void activity_handlers::spellcasting_finish( player_activity *act, Character *yo
             spell_being_cast.cast_all_effects( *you, *target );
 
             if( act->get_value( 2 ) != 0 ) {
-                spell_being_cast.consume_spell_cost( *you );
+                spell_being_cast.consume_spell_cost( *you, true );
             }
             if( level_override == -1 ) {
                 if( !spell_being_cast.is_max_level( *you ) ) {

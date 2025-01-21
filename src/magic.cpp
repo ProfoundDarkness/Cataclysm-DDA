@@ -1806,9 +1806,12 @@ static void blood_magic( Character *you, int cost )
     you->mod_pain( std::max( 1, cost / 3 ) );
 }
 
-void spell::consume_spell_cost( Character &caster ) const
+void spell::consume_spell_cost( Character &caster, bool cast_success ) const
 {
-    int cost = energy_cost( caster ) * get_failure_cost_percent( caster );
+    int cost = energy_cost( caster );
+    if( !cast_success ) {
+        cost *= get_failure_cost_percent( caster );
+    }
     switch( energy_source() ) {
         case magic_energy_type::mana:
             caster.magic->mod_mana( caster, -cost );
@@ -2085,7 +2088,7 @@ dealt_projectile_attack spell::get_projectile_attack( const tripoint_bub_ms &tar
 
     dealt_projectile_attack atk;
     atk.end_point = target;
-    atk.hit_critter = &hit_critter;
+    atk.last_hit_critter = &hit_critter;
     atk.proj = bolt;
     atk.missed_by = 0.0;
 
