@@ -76,6 +76,7 @@
 #include "worldfactory.h"
 #include "bodygraph.h"
 #include "diary.h"
+#include "safemode_ui.h"
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
@@ -259,6 +260,8 @@ void handle_key_blocking_activity()
             diary::show_diary_ui( u.get_avatar_diary() );
         } else if( action == "help" ) {
             get_help().display_help();
+        } else if( action == "open_safemode" ) {
+            get_safemode().show();
         } else if( action != "HELP_KEYBINDINGS" ) {
             refresh = false;
         }
