@@ -360,6 +360,8 @@ class item : public visitable
         bool is_cash_card() const;
 
         bool is_estorage() const;
+        /** Above, along with checks for power, browsed, use action */
+        bool is_estorage_usable( const Character &who ) const;
         bool is_estorable() const;
         bool is_browsed() const;
         void set_browsed( bool browsed );
@@ -2407,7 +2409,7 @@ class item : public visitable
          * Mark one chapter of the book as read by the given player. May do nothing if the book has
          * no unread chapters. This is a per-character setting, see @ref get_remaining_chapters.
          */
-        void mark_chapter_as_read( const Character &u );
+        void mark_chapter_as_read( Character &u );
         /**
          * Returns recipes stored on the item (laptops, smartphones, sd cards etc)
          * Filters out !is_valid() recipes
