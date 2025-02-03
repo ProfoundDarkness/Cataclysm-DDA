@@ -1218,9 +1218,9 @@ static activity_reason_info can_do_activity_there( const activity_id &act, Chara
                 const bool is_human = corpse.id == mtype_id::NULL_ID() ||
                                       corpse.in_species( species_HUMAN ) ||
                                       corpse.in_species( species_FERAL );
-                //if( is_human && !you.okay_with_eating_humans() ) {
-                //    return activity_reason_info::fail( do_activity_reason::REFUSES_THIS_WORK );
-                //}
+                if( is_human && !you.okay_with_eating_humans() ) {
+                    return activity_reason_info::fail( do_activity_reason::REFUSES_THIS_WORK );
+                }
             }
             if( big_count > 0 && small_count == 0 ) {
                 if( !b_rack_present ) {
