@@ -77,6 +77,7 @@
 #include "bodygraph.h"
 #include "diary.h"
 #include "safemode_ui.h"
+#include "faction.h"
 
 static const activity_id ACT_AUTODRIVE( "ACT_AUTODRIVE" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
