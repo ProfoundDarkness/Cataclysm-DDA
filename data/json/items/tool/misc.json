@@ -475,7 +475,7 @@
     "material": [ "gold", "glass" ],
     "symbol": ",",
     "color": "light_gray",
-    "flags": [ "WATCH" ]
+    "flags": [ "WATCH", "FANCY" ]
   },
   {
     "id": "porcelain_urn",

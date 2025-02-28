@@ -295,6 +295,11 @@
     "text": "Hoarder"
   },
   {
+    "id": "morale_perm_fancy",
+    "type": "morale_type",
+    "text": "Stylish"
+  },
+  {
     "id": "morale_perm_optimist",
     "type": "morale_type",
     "text": "Optimist"

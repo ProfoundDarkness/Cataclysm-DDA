@@ -623,7 +623,7 @@
     "volume": "1750 ml",
     "warmth": 7,
     "environmental_protection": 1,
-    "flags": [ "VARSIZE", "SUN_GLASSES" ],
+    "flags": [ "FANCY", "VARSIZE", "SUN_GLASSES" ],
     "material_thickness": 0.5,
     "armor": [ { "encumbrance": 10, "coverage": 100, "covers": [ "head" ], "specifically_covers": [ "head_crown" ] } ]
   },
@@ -2667,7 +2667,8 @@
     "price": "10 USD",
     "price_postapoc": "5 cent",
     "material": [ "plastic" ],
-    "weight": "100 mg"
+    "weight": "100 mg",
+    "flags": [ "FANCY" ]
   },
   {
     "id": "towel",
@@ -2806,7 +2807,7 @@
       "msg": "You adjust the neck and collar of the turtleneck.",
       "type": "transform"
     },
-    "flags": [ "VARSIZE", "ALLOWS_NATURAL_ATTACKS" ],
+    "flags": [ "VARSIZE", "FANCY", "ALLOWS_NATURAL_ATTACKS" ],
     "armor": [
       { "encumbrance": 3, "coverage": 100, "covers": [ "torso", "arm_l", "arm_r", "mouth" ] },
       { "encumbrance": 1, "coverage": 100, "covers": [ "head" ], "specifically_covers": [ "head_throat" ] }
@@ -2835,7 +2836,7 @@
       "msg": "You adjust the neck and collar of the turtleneck.",
       "type": "transform"
     },
-    "flags": [ "VARSIZE", "ALLOWS_NATURAL_ATTACKS" ],
+    "flags": [ "VARSIZE", "FANCY", "ALLOWS_NATURAL_ATTACKS" ],
     "armor": [
       { "encumbrance": 3, "coverage": 100, "covers": [ "torso", "arm_l", "arm_r" ] },
       { "encumbrance": 1, "coverage": 100, "covers": [ "head" ], "specifically_covers": [ "head_throat" ] }
@@ -2864,7 +2865,7 @@
       "msg": "You adjust the neck and collar of the turtleneck shirt.",
       "type": "transform"
     },
-    "flags": [ "VARSIZE", "ALLOWS_NATURAL_ATTACKS" ],
+    "flags": [ "VARSIZE", "FANCY", "ALLOWS_NATURAL_ATTACKS" ],
     "armor": [
       { "encumbrance": 2, "coverage": 100, "covers": [ "torso", "arm_l", "arm_r", "mouth" ] },
       { "encumbrance": 0, "coverage": 100, "covers": [ "head" ], "specifically_covers": [ "head_throat" ] }
@@ -2893,7 +2894,7 @@
       "msg": "You adjust the neck and collar of the turtleneck shirt.",
       "type": "transform"
     },
-    "flags": [ "VARSIZE", "ALLOWS_NATURAL_ATTACKS" ],
+    "flags": [ "VARSIZE", "FANCY", "ALLOWS_NATURAL_ATTACKS" ],
     "armor": [
       { "encumbrance": 2, "coverage": 100, "covers": [ "torso", "arm_l", "arm_r" ] },
       { "encumbrance": 0, "coverage": 100, "covers": [ "head" ], "specifically_covers": [ "head_throat" ] }
@@ -3764,7 +3765,7 @@
     "warmth": 7,
     "environmental_protection": 1,
     "armor": [ { "covers": [ "head" ], "coverage": 80, "encumbrance": 10 } ],
-    "flags": [ "VARSIZE", "SUN_GLASSES" ],
+    "flags": [ "FANCY", "VARSIZE", "SUN_GLASSES" ],
     "material_thickness": 0.5
   },
   {

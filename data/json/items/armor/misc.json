@@ -53,6 +53,7 @@
     "looks_like": "hat_cotton",
     "color": "yellow",
     "material_thickness": 2,
+    "flags": [ "SUPER_FANCY" ],
     "armor": [ { "encumbrance": 20, "coverage": 30, "covers": [ "head" ] } ]
   },
   {
@@ -69,6 +70,7 @@
     "looks_like": "crown_golden",
     "color": "yellow",
     "material_thickness": 2,
+    "flags": [ "FANCY" ],
     "armor": [ { "encumbrance": 20, "coverage": 30, "covers": [ "head" ] } ]
   },
   {
@@ -100,7 +102,8 @@
     "price_postapoc": "10 cent",
     "material": [ "cotton" ],
     "symbol": "[",
-    "color": "dark_gray"
+    "color": "dark_gray",
+    "flags": [ "FANCY" ]
   },
   {
     "id": "sleeping_bag_roll",
@@ -167,7 +170,8 @@
     "price_postapoc": "10 cent",
     "material": [ "cotton" ],
     "symbol": "[",
-    "color": "black"
+    "color": "black",
+    "flags": [ "FANCY" ]
   },
   {
     "id": "tie_clipon",
@@ -180,7 +184,8 @@
     "price_postapoc": "10 cent",
     "material": [ "cotton" ],
     "symbol": "[",
-    "color": "blue"
+    "color": "blue",
+    "flags": [ "FANCY" ]
   },
   {
     "id": "tie_necktie",
@@ -193,7 +198,8 @@
     "price_postapoc": "10 cent",
     "material": [ "cotton" ],
     "symbol": "[",
-    "color": "green"
+    "color": "green",
+    "flags": [ "FANCY" ]
   },
   {
     "id": "vampire_fangs",
@@ -227,7 +233,7 @@
     "color": "white",
     "material_thickness": 0.01,
     "environmental_protection": 1,
-    "flags": [ "OUTER", "OVERSIZE" ],
+    "flags": [ "SUPER_FANCY", "OUTER", "OVERSIZE" ],
     "armor": [ { "encumbrance": 5, "coverage": 100, "covers": [ "eyes", "mouth" ] } ]
   },
   {
